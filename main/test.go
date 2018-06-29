@@ -15,6 +15,8 @@ func (s *S) Flush() {
 	fmt.Println("in flush")
 }
 
+type F func(int, int)
+
 func main() {
 	s := S{}
 	s.Flush()

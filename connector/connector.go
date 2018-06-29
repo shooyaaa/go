@@ -1,15 +1,30 @@
 package connector
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
-	"strconv"
-	"time"
 )
 
+type HttpHandler func(http.ResponseWriter, *http.Request)
+
 type HttpServer struct {
-	Root string
-	Addr string
+	Root    string
+	Addr    string
+	Handler map[string]HttpHandler
+}
+
+func (hs *HttpServer) Register(key string, handler HttpHandler) {
+	hs.Handler[key] = handler
+}
+
+func (hs *HttpServer) Info(w http.ResponseWriter, r *http.Request) {
+	data, err := json.Marshal(map[string]string{"Addr": hs.Addr})
+	if err != nil {
+		log.Println("Error while marshal json :", err)
+	}
+	w.Header().Add("Content-Type", "text/json")
+	w.Write(data)
 }
 
 func (hs *HttpServer) Run() {
@@ -21,23 +36,14 @@ func (hs *HttpServer) Run() {
 }
 
 func (hs *HttpServer) serveHome(w http.ResponseWriter, r *http.Request) {
-	log.Printf("a request come")
-	header := map[string]string{
-		"Content-Type": "text/html",
-		"Date":         "2018-20-12",
-	}
+	header := map[string]string{}
 	for key, s := range header {
 		w.Header().Add(key, s)
 	}
-	w.WriteHeader(http.StatusOK)
-	for i := 0; i < 100; i++ {
-		time.Sleep(1000 * time.Millisecond)
-		response := make([]byte, 10)
-		num := []byte(strconv.Itoa(i))
-		log.Printf("num %v", num)
-		response = append(response, num...)
-		response = append(response, []byte("<br/>")...)
-		w.Write(response)
-		w.(http.Flusher).Flush()
+	uri := r.URL.Path
+	if handler, ok := hs.Handler[uri]; ok {
+		handler(w, r)
+	} else {
+		http.ServeFile(w, r, hs.Root+uri)
 	}
 }
