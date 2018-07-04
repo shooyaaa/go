@@ -1,4 +1,4 @@
-package connector
+package http
 
 import (
 	"encoding/json"
@@ -44,6 +44,7 @@ func (hs *HttpServer) serveHome(w http.ResponseWriter, r *http.Request) {
 	if handler, ok := hs.Handler[uri]; ok {
 		handler(w, r)
 	} else {
+		log.Printf("file : %v", string(hs.Root+uri))
 		http.ServeFile(w, r, hs.Root+uri)
 	}
 }
