@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<script>
+window.addEventListener("load", function(evt) {
+    var output = document.getElementById("output");
+    var input = document.getElementById("input");
+    var width = 400
+    var height = 500
+    var ws;
+    var Address;
+    var print = function(message) {
+        var d = document.createElement("div");
+        d.innerHTML = message;
+        output.appendChild(d);
+    };
+    function ajax(url, handler) {
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function() {
+          if (this.readyState == 4 && this.status == 200) {
+              handler(this.responseText)
+          }
+        };
+        xhttp.open("GET", url, true);
+        xhttp.send();
+    }
+
+    var pressTime = 0
+    window.onkeydown = function (evt) {
+        var speed = 1
+        if (!pressTime) {
+            pressTime = Date.now()
+        } else {
+            speed = Date.now() - pressTime
+        }
+        speed = Math.min(6, speed)
+        var x = evt.which || evt.keyCode
+        if (x == 87) {
+            car.speedY -= speed
+        } else if (x == 83) {
+            car.speedY += speed
+        } else if (x == 65) {
+            car.speedX -= speed
+        } else if (x == 68) {
+            car.speedX += speed
+        }
+        //car.speedX = Math.min(4, car.speedX)
+        //car.speedY = Math.min(4, car.speedY)
+    }
+    window.onkeyup = function (evt) {
+        pressTime = 0
+    }
+
+    var diff = 0
+    document.getElementById("open").onclick = function(evt) {
+        if (ws) {
+            return false;
+        }
+        ws = new WebSocket('ws://' + Address + '/ws');
+        ws.onopen = function(evt) {
+            print("OPEN");
+        }
+        ws.onclose = function(evt) {
+            print("CLOSE");
+            ws = null;
+        }
+        ws.onmessage = function(evt) {
+            var json = JSON.parse(evt.data)
+            var op = json.Op
+            switch (op) {
+                case 'ping':
+                    var now = Date.now()
+                    diff = now - Math.floor(json.Data / 1000000)
+                    break;
+            }
+        }
+        ws.onerror = function(evt) {
+            print("ERROR: " + evt.data);
+        }
+        return false;
+    };
+    document.getElementById("send").onclick = function(evt) {
+        if (!ws) {
+            return false;
+        }
+        print("SEND: " + input.value);
+        ws.send(input.value);
+        return false;
+    };
+    ajax('/wsinfo', function (data) {
+        Address = JSON.parse(data).Addr
+    })
+    document.getElementById("close").onclick = function(evt) {
+        if (!ws) {
+            return false;
+        }
+        ws.close();
+        return false;
+    };
+    canvas = document.getElementById('myCanvas')
+    canvas.width = width
+    canvas.height = height
+    graphics = canvas.getContext('2d')
+    function drawRect(x, y, width, height, color) {
+        graphics.beginPath()
+        graphics.rect(x, y, width, height)
+        graphics.fillStyle = color
+        graphics.fill()
+    }
+
+
+    var imgCache = {}
+    var loader = function (name, url) {
+        return new Promise((resolve, reject) => {
+            var img = new Image()
+            img.src = url
+            img.onload = function (){
+                imgCache[name] = {url : url, img : img}
+                resolve(imgCache[name])
+            }
+        })
+    }
+
+    var bulkLoader = function (urls) {
+        var promises = []
+        for (var i in urls) {
+            promises.push(loader(i, urls[i]))
+        }
+        return Promise.all(promises)
+    }
+
+    var car
+    var bg1
+    var bg = []
+    bulkLoader({bg : './bg.jpg', car : './car.png'}).then(result => {
+        bg1 = addImage(0, 0, 'bg', 'bg')
+        bg1.width = 400
+        bg1.speedY = 1
+        bg1.height = 500
+        bg.push(bg1)
+        bg2 = addImage(0, 0, 'bg', 'bg')
+        bg2.width = 400
+        bg2.speedY = 1
+        bg2.height = 500
+        bg.push(bg2)
+
+        car = addImage(0, 0, 'car', 'car')
+        requestAnimationFrame(render)
+    })
+
+    var children = []
+    function addImage(x, y, texture, name) {
+        if (imgCache[name]) {
+            var child = {
+                name : name,
+                x : x,
+                y : y,
+                speedX : 0,
+                speedY : 0,
+                width : imgCache[name].img.width,
+                height : imgCache[name].img.height,
+                texture : texture
+            }
+            children.push(child)
+            return child
+        } else {
+            throw Error("no img " + name + " loaded")
+        }
+    }
+
+    drawRect(0, 0, 10, 10, '#ff0000')
+
+    lastTime = 0
+    var total = 0
+    var frame = 0
+    function render(timestamp) {
+        graphics.clearRect(0, 0, 400, 500)
+        delta = timestamp - lastTime
+        lastTime = timestamp
+        total += delta
+        frame ++
+        if (total > 1000) {
+            document.getElementById('debug').innerHTML = 'fps ' + frame + ' delay ' + diff
+            frame = 0
+            total = 0
+        }
+        requestAnimationFrame(render)
+        if (bg[0].y + 1> height) {
+            var temp = bg.shift()
+            bg.push(temp)
+        }
+        bg[0].y += 1
+        graphics.drawImage(imgCache[bg[0].texture].img, bg[0].x, bg[0].y, bg[0].width, bg[0].height)
+        bg[1].y = bg[0].y - bg[1].height
+        graphics.drawImage(imgCache[bg[1].texture].img, bg[1].x, bg[1].y, bg[1].width, bg[1].height)
+
+        for (var i in children) {
+            var child = children[i]
+            if (child.name == 'car') {
+                if (child.x  + child.speedX < 0) {
+                    child.x = 0
+                    child.speedX = 0
+                }
+                if (child.x  + child.speedX > width - child.width) {
+                    child.x = width - child.width
+                    child.speedX = 0
+                }
+                if (child.y + child.speedY < 0) {
+                    child.y = 0
+                    child.speedY = 0
+                }
+                if (child.y + child.speedY > height - child.height) {
+                    child.y = height - child.height
+                    child.speedY = 0
+                }
+                if (pressTime) {
+                    child.x += child.speedX
+                    child.y += child.speedY
+                    graphics.drawImage(imgCache[child.texture].img, child.x, child.y, child.width, child.height)
+                    if (child.speedX || child.speedY) {
+                        ws.send(JSON.stringify({action : "move", x : child.x, y : child.y}));
+                    }
+                } else {
+                    child.speedX = 0
+                    child.speedY = 0
+                    graphics.drawImage(imgCache[child.texture].img, child.x, child.y, child.width, child.height)
+                }
+            }
+        }
+
+    }
+});
+</script>
+</head>
+    <body>
+        <form>
+            <button id="open">Open</button>
+            <button id="close">Close</button>
+            <p><input id="input" type="text" value="Hello world!">
+            <button id="send">Send</button>
+        </form>
+        <canvas id="myCanvas" style="background-color:black"></canvas>
+        <div id="output"></div>
+        <div id="debug" style="position:absolute;top:0px;left:200px"></div>
+</body>
+</html>

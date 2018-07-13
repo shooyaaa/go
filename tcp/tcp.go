@@ -2,7 +2,7 @@ package tcp
 
 import (
 	"github.com/shooyaaa/codec"
-	"github.com/shooyaaa/session"
+	"github.com/shooyaaa/types"
 	"github.com/shooyaaa/uuid"
 	"log"
 	"net"
@@ -11,7 +11,7 @@ import (
 
 type Tcp struct {
 	Id        uuid.UUID
-	Sessions  map[int64]session.Session
+	Sessions  map[int64]types.Session
 	HeartBeat time.Duration
 }
 
@@ -29,7 +29,7 @@ func (tcp *Tcp) Listen(addr string) {
 			log.Printf("Error while accept %v", err)
 			continue
 		}
-		session := session.Session{
+		session := types.Session{
 			Id:     tcp.Id.NewUUID(),
 			Name:   "",
 			Conn:   conn,
@@ -45,7 +45,7 @@ func (tcp *Tcp) Listen(addr string) {
 	}
 }
 
-func (tcp *Tcp) Read(s session.Session) {
+func (tcp *Tcp) Read(s types.Session) {
 	for {
 		if s.Conn == nil {
 			break
@@ -62,7 +62,7 @@ func (tcp *Tcp) Read(s session.Session) {
 
 }
 
-func (tcp *Tcp) NewClient(session session.Session) {
+func (tcp *Tcp) NewClient(session types.Session) {
 	for {
 		select {
 		case <-session.Ticker.C:

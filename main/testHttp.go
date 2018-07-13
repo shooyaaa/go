@@ -2,18 +2,18 @@ package main
 
 import (
 	"github.com/shooyaaa/http"
-	"github.com/shooyaaa/session"
+	"github.com/shooyaaa/types"
 	"github.com/shooyaaa/uuid"
 	"github.com/shooyaaa/websocket"
 )
 
 func main() {
 	simple := uuid.Simple{0}
-	var uuid uuid.UUID
-	uuid = &simple
+	var u uuid.UUID
+	u = &simple
 	ws := websocket.Ws{
-		Id:        uuid,
-		Sessions:  make(map[int64]session.Session),
+		Id:        u,
+		Sessions:  make(map[uuid.ID]types.Session),
 		HeartBeat: 5,
 	}
 	server := http.HttpServer{"./static/", "127.0.0.1:3333", make(map[string]http.HttpHandler)}

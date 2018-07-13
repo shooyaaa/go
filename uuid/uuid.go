@@ -1,5 +1,7 @@
 package uuid
 
+type ID int64
+
 type UUID interface {
-	NewUUID() int64
+	NewUUID() ID
 }

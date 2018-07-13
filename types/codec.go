@@ -1,4 +1,8 @@
-package codec
+package types
+
+import (
+	"encoding/binary"
+)
 
 type Codec interface {
 	Encode(interface{}) ([]byte, error)
@@ -20,8 +24,9 @@ func (b *Buffer) Consume(i int) (int, error) {
 	return i, nil
 }
 
-func (b *Buffer) Package(i interface{}) error {
-	count, err := b.Decode(b.data, i)
-	b.Consume(count)
-	return err
+func (b *Buffer) Package(dispatcher Dispatcher, data []byte) error {
+	op := binary.BigEndian.Uint16(data)
+	dispatcher.Handle(OpCode(op), data[2:])
+	b.Consume(len(b.data))
+	return nil
 }

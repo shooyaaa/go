@@ -1,4 +1,4 @@
-package codec
+package types
 
 import (
 	"encoding/json"
@@ -12,6 +12,6 @@ func (j *Json) Encode(i interface{}) ([]byte, error) {
 }
 
 func (j *Json) Decode(data []byte, i interface{}) (int, error) {
-	err := json.Unmarshal(data, &i)
+	err := json.Unmarshal(data, i)
 	return len(data), err
 }

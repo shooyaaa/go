@@ -2,8 +2,8 @@ package websocket
 
 import (
 	"github.com/gorilla/websocket"
-	"github.com/shooyaaa/codec"
-	"github.com/shooyaaa/session"
+	"github.com/shooyaaa/arena"
+	"github.com/shooyaaa/types"
 	"github.com/shooyaaa/uuid"
 	"log"
 	"net/http"
@@ -12,18 +12,20 @@ import (
 
 type Ws struct {
 	Id        uuid.UUID
-	Sessions  map[int64]session.Session
+	Sessions  map[uuid.ID]types.Session
 	HeartBeat time.Duration
 }
+
+var roomManager = arena.RoomManager{}
 
 func (ws *Ws) Connect(w http.ResponseWriter, r *http.Request) {
 	upgrader := websocket.Upgrader{}
 	conn, err := upgrader.Upgrade(w, r, nil)
-	session := session.Session{
+	session := types.Session{
 		Id:     ws.Id.NewUUID(),
 		Name:   "",
 		Conn:   conn,
-		Buffer: codec.Buffer{Codec: &codec.Json{}},
+		Buffer: types.Buffer{Codec: &types.Json{}},
 	}
 	ws.Sessions[session.Id] = session
 	log.Printf("clients : %v", ws.Sessions)
@@ -33,28 +35,28 @@ func (ws *Ws) Connect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	session.ReadChan = make(chan []byte)
-	defer conn.Close()
-	defer close(session.ReadChan)
 
-	conn.SetCloseHandler(session.CloseHandler)
 	session.Ticker = time.NewTicker(ws.HeartBeat * time.Second)
+	defer session.Ticker.Stop()
 	go ws.Read(session)
 	for {
 		select {
 		case <-session.Ticker.C:
-			conn.WriteMessage(websocket.PingMessage, []byte{'0', '1', '2', '3'})
+			now := time.Now().UnixNano()
+			ws.Write(session, types.OpPing{"ping", now})
 		case msg, ok := <-session.ReadChan:
 			if !ok {
+				log.Printf("Fail read Readchan : %v", ws.Sessions)
 				delete(ws.Sessions, session.Id)
-				break
+				log.Printf("Fail read Readchan : %v", ws.Sessions)
+				return
 			}
-			req := make(map[string]int)
 			session.Buffer.Append(msg)
-			err := session.Buffer.Package(req)
+			err := session.Buffer.Package(types.Dispatcher(roomManager), msg)
 			if err != nil {
 				log.Printf("Error message : %v", err)
 			} else {
-				log.Printf("Recv message : %v", req)
+				log.Printf("Recv message : %v", msg)
 			}
 		default:
 			time.Sleep(50 * time.Millisecond)
@@ -62,7 +64,18 @@ func (ws *Ws) Connect(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (ws Ws) Read(s session.Session) {
+func (ws Ws) Write(session types.Session, i interface{}) {
+	data, _ := session.Buffer.Encode(i)
+	session.Conn.(*websocket.Conn).WriteMessage(websocket.TextMessage, data)
+}
+
+func (ws Ws) Broadcast(i interface{}) {
+	for _, session := range ws.Sessions {
+		ws.Write(session, i)
+	}
+}
+
+func (ws Ws) Read(s types.Session) {
 	for {
 		if s.Conn == nil {
 			break
@@ -70,6 +83,7 @@ func (ws Ws) Read(s session.Session) {
 		_, message, err := s.Conn.(*websocket.Conn).ReadMessage()
 		log.Println("read message")
 		if err != nil {
+			close(s.ReadChan)
 			log.Println("Read websocket error :", err)
 			break
 		} else {
