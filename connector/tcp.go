@@ -1,17 +1,15 @@
-package tcp
+package connector
 
 import (
-	"github.com/shooyaaa/codec"
 	"github.com/shooyaaa/types"
-	"github.com/shooyaaa/uuid"
 	"log"
 	"net"
 	"time"
 )
 
 type Tcp struct {
-	Id        uuid.UUID
-	Sessions  map[int64]types.Session
+	Id        types.UUID
+	Sessions  map[types.ID]types.Session
 	HeartBeat time.Duration
 }
 
@@ -31,9 +29,8 @@ func (tcp *Tcp) Listen(addr string) {
 		}
 		session := types.Session{
 			Id:     tcp.Id.NewUUID(),
-			Name:   "",
 			Conn:   conn,
-			Buffer: codec.Buffer{Codec: &codec.Json{}},
+			ReadBuffer: types.Buffer{Codec: &types.Json{}},
 		}
 		session.ReadChan = make(chan []byte)
 		session.Ticker = time.NewTicker(tcp.HeartBeat * time.Second)
@@ -73,8 +70,8 @@ func (tcp *Tcp) NewClient(session types.Session) {
 				break
 			}
 			req := make(map[string]interface{})
-			session.Buffer.Append(msg)
-			err := session.Buffer.Package(req)
+			session.ReadBuffer.Append(msg)
+			err := session.ReadBuffer.Package(session.OpPipe, []byte{})
 			if err != nil {
 				log.Printf("Error message : %v : %v", len(msg), err)
 			} else {

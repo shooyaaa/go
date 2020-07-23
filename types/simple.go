@@ -1,4 +1,4 @@
-package uuid
+package types
 
 type Simple struct {
 	Counter ID

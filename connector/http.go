@@ -1,25 +1,51 @@
 package connector
 
 import (
-	"github.com/shooyaaa/codec"
-	"github.com/shooyaaa/http"
-	"github.com/shooyaaa/uuid"
-	"github.com/shooyaaa/websocket"
+	"net/http"
+	"encoding/json"
+	"log"
 )
 
-func Run(root, addr) http.HttpServer {
-	simple := uuid.Simple{0}
-	var uuid uuid.UUID
-	uuid = &simple
-	ws := websocket.Ws{
-		Id:        uuid,
-		Sessions:  make(map[int64]websocket.Session),
-		HeartBeat: 5,
-		Codec:     &codec.Json{},
+
+type HttpHandler func(http.ResponseWriter, *http.Request)
+
+type HttpServer struct {
+	Root    string
+	Addr    string
+	Handler map[string]HttpHandler
+}
+
+func (hs *HttpServer) Register(key string, handler HttpHandler) {
+	hs.Handler[key] = handler
+}
+
+func (hs *HttpServer) Info(w http.ResponseWriter, r *http.Request) {
+	data, err := json.Marshal(map[string]string{"Addr": hs.Addr})
+	if err != nil {
+		log.Println("Error while marshal json :", err)
 	}
-	server := http.HttpServer{root, addr, make(map[string]http.HttpHandler)}
-	server.Register("/ws", ws.Connect)
-	server.Register("/wsinfo", server.Info)
-	server.Run()
-	return server
+	w.Header().Add("Content-Type", "text/json")
+	w.Write(data)
+}
+
+func (hs *HttpServer) Run() {
+	http.HandleFunc("/", hs.serveHome)
+	err := http.ListenAndServe(hs.Addr, nil)
+	if err != nil {
+		log.Fatal("ListenAndServe: ", err)
+	}
+}
+
+func (hs *HttpServer) serveHome(w http.ResponseWriter, r *http.Request) {
+	header := map[string]string{}
+	for key, s := range header {
+		w.Header().Add(key, s)
+	}
+	uri := r.URL.Path
+	if handler, ok := hs.Handler[uri]; ok {
+		handler(w, r)
+	} else {
+		log.Printf("file : %v", string(hs.Root + uri))
+		http.ServeFile(w, r, hs.Root + uri)
+	}
 }

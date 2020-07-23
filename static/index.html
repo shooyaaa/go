@@ -64,6 +64,9 @@ window.addEventListener("load", function(evt) {
         ws.close();
         return false;
     };
+    ajax('/wsinfo', function (data) {
+            Address = JSON.parse(data).Addr
+    })
 });
 </script>
 </head>
