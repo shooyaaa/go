@@ -7,17 +7,12 @@ import (
 )
 
 func main() {
-	sm :=  manager.Session {
-		WaitChan : make (chan types.Session, 1000),
-	}
-	sm.Init()
 	ws := connector.Ws{
-		Id : &types.Simple{},
-		SessionManager : sm,
-		HeartBeat : 400,
-		Addr : "127.0.0.1:5233",
-		Root : "../static",
+		Id:        &types.Simple{},
+		HeartBeat: 400,
+		Addr:      "127.0.0.1:5233",
+		Root:      "../static",
 	}
-	sm.Work()
+	manager.SessionManager().Work()
 	ws.Run()
 }

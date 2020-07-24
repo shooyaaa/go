@@ -24,16 +24,15 @@ func (b *Buffer) Consume(i int) (int, error) {
 	return i, nil
 }
 
-func (b *Buffer) Package(pipe chan Op, data []byte) error {
+func (b *Buffer) Package(data []byte) (Op, error) {
 	//op := binary.BigEndian.Uint16(data)
 	//dispatcher.Handle(OpCode(op), data[2:])
 	//b.Consume(len(b.data))
 	op := Op{}
-	size, err := b.Decode(data, op)
+	size, err := b.Decode(data, &op)
 	if err != nil {
-		log.Fatal("Error while decode buffer %v", err)
+		log.Printf("Error while decode buffer %v", err)
 	}
-	data = data[size :]
-	pipe <- op
-	return nil
+	data = data[size:]
+	return op, err
 }

@@ -1,27 +1,55 @@
 package manager
 
 import (
+	"errors"
+	"sync"
+
 	"github.com/shooyaaa/types"
 )
 
+var once sync.Once
 
-type RoomManager struct {
-	rooms   map[int]types.Room
-	players map[types.ID]int
+var instance roomManager
+
+func RoomManager() *roomManager {
+	once.Do(func() {
+		instance = roomManager{}
+		instance.Init()
+	})
+	return &instance
 }
 
+type roomManager struct {
+	rooms map[types.ID]types.Room
+	uuid  types.UUID
+}
 
-func (rm *RoomManager) Join(id int, playerId types.ID) {
+func (rm *roomManager) Init() {
+	rm.rooms = make(map[types.ID]types.Room)
+	rm.uuid = &types.Simple{}
+}
+
+func (rm *roomManager) Join(id types.ID, playerId *types.Session) error {
 	r, ok := rm.rooms[id]
 	if !ok {
-		r = types.Room{}
-		rm.rooms[id] = r
+		return errors.New("Room %d not exists")
 	}
 	r.Add(playerId)
-	rm.players[playerId] = id
+	return nil
 }
 
-func (rm *RoomManager) add(id int) {
-	rm.rooms[id] = types.Room{}
+func (rm *roomManager) Add() (types.ID, *types.Room) {
+	id := rm.uuid.NewUUID()
+	room := types.Room{}
+	rm.rooms[id] = room
+	room.Init()
+	return id, &room
 }
 
+func (rm *roomManager) Get(id types.ID) (types.Room, error) {
+	r, ok := rm.rooms[id]
+	if !ok {
+		return r, errors.New("Room %d not exists")
+	}
+	return r, nil
+}

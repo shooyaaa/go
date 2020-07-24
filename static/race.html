@@ -84,8 +84,14 @@ window.addEventListener("load", function(evt) {
         if (!ws) {
             return false;
         }
-        print("SEND: " + input.value);
-        ws.send(input.value);
+        try {
+            let obj = JSON.parse(input.value)
+            obj.Ts = Date.now()
+            print("SEND: " + obj);
+            ws.send(input.value);
+        } catch (err) {
+            alert("Invalid json data")
+        }
         return false;
     };
     ajax('/wsinfo', function (data) {
@@ -237,7 +243,7 @@ window.addEventListener("load", function(evt) {
         <form>
             <button id="open">Open</button>
             <button id="close">Close</button>
-            <p><input id="input" type="text" value="Hello world!">
+            <p><input id="input" type="text" value='{"type":1}'>
             <button id="send">Send</button>
         </form>
         <canvas id="myCanvas" style="background-color:black"></canvas>

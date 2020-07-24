@@ -1,10 +1,11 @@
 package connector
 
 import (
-	"github.com/shooyaaa/types"
 	"log"
 	"net"
 	"time"
+
+	"github.com/shooyaaa/types"
 )
 
 type Tcp struct {
@@ -28,8 +29,8 @@ func (tcp *Tcp) Listen(addr string) {
 			continue
 		}
 		session := types.Session{
-			Id:     tcp.Id.NewUUID(),
-			Conn:   conn,
+			Id:         tcp.Id.NewUUID(),
+			Conn:       conn,
 			ReadBuffer: types.Buffer{Codec: &types.Json{}},
 		}
 		session.ReadChan = make(chan []byte)
@@ -71,7 +72,7 @@ func (tcp *Tcp) NewClient(session types.Session) {
 			}
 			req := make(map[string]interface{})
 			session.ReadBuffer.Append(msg)
-			err := session.ReadBuffer.Package(session.OpPipe, []byte{})
+			_, err := session.ReadBuffer.Package([]byte{})
 			if err != nil {
 				log.Printf("Error message : %v : %v", len(msg), err)
 			} else {

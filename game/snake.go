@@ -3,19 +3,20 @@ package game
 import (
 	"github.com/shooyaaa/types"
 )
+
 type Snake struct {
-	r Room	
+	r types.Room
 }
 
 type SnakeData struct {
-	Player
+	types.Player
 }
 
-func (s *Snake) SetRoom(r Room) {
+func (s *Snake) SetRoom(r types.Room) {
 	s.r = r
 }
 
-func (s *Snake) HandleOps(ops []Op) {
+func (s *Snake) HandleOps(ops []types.Op) {
 
 }
 
@@ -23,6 +24,8 @@ func (s *Snake) Sync() {
 
 }
 
-func (s *Snake) GameData() {
-	return SnakeData{X : 0, Y : 0, Blood : 100, Score : 0}
+func (s *Snake) GameData() SnakeData {
+	data := SnakeData{}
+	data.Blood = 100
+	return data
 }
