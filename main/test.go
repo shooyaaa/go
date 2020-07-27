@@ -9,7 +9,7 @@ import (
 func main() {
 	ws := connector.Ws{
 		Id:        &types.Simple{},
-		HeartBeat: 400,
+		HeartBeat: 40000000000,
 		Addr:      "127.0.0.1:5233",
 		Root:      "../static",
 	}

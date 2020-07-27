@@ -1,6 +1,7 @@
 package types
 
 import (
+	"log"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -23,20 +24,23 @@ type Session struct {
 	ReadBuffer  Buffer
 	WriteBuffer Buffer
 	Status      uint8
-	OpPipe      chan Op
+	OpPipe      *chan Op
 }
 
-func (s *Session) SetPipe(pipe chan Op) {
+func (s *Session) SetPipe(pipe *chan Op) {
 	s.OpPipe = pipe
 	s.Status = Pending
 }
 
-func (s *Session) Write(i interface{}) error {
-	data, _ := s.WriteBuffer.Encode(i)
+func (s *Session) Write(i []Op) error {
+	data, err := s.WriteBuffer.Encode(i)
+	if err != nil {
+		log.Printf("Error encode data %v", err)
+	}
 	return s.Conn.(*websocket.Conn).WriteMessage(websocket.TextMessage, data)
 }
 
-func (s *Session) JoinRoom(roomId ID, ch chan Op) {
+func (s *Session) JoinRoom(roomId ID, ch *chan Op) {
 	s.Status = InRoom
 	s.OpPipe = ch
 }

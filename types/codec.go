@@ -5,8 +5,8 @@ import (
 )
 
 type Codec interface {
-	Encode(interface{}) ([]byte, error)
-	Decode([]byte, interface{}) (int, error)
+	Encode([]Op) ([]byte, error)
+	Decode([]byte, *[]Op) (int, error)
 }
 
 type Buffer struct {
@@ -24,15 +24,15 @@ func (b *Buffer) Consume(i int) (int, error) {
 	return i, nil
 }
 
-func (b *Buffer) Package(data []byte) (Op, error) {
+func (b *Buffer) Package(data []byte) ([]Op, error) {
 	//op := binary.BigEndian.Uint16(data)
 	//dispatcher.Handle(OpCode(op), data[2:])
 	//b.Consume(len(b.data))
-	op := Op{}
-	size, err := b.Decode(data, &op)
+	ops := make([]Op, 1)
+	size, err := b.Decode(data, &ops)
 	if err != nil {
 		log.Printf("Error while decode buffer %v", err)
 	}
 	data = data[size:]
-	return op, err
+	return ops, err
 }

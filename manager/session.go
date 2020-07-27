@@ -3,7 +3,10 @@ package manager
 import (
 	"errors"
 	"fmt"
+	"log"
 	"sync"
+
+	"github.com/shooyaaa/game"
 
 	"github.com/shooyaaa/types"
 )
@@ -43,8 +46,16 @@ func (s *session) Accept() {
 		select {
 		case session := <-s.WaitChan:
 			s.list[session.Id] = session
-			session.SetPipe(s.OpChan)
+			session.SetPipe(&s.OpChan)
 			fmt.Printf("New session %d", session.Id)
+			ops := make([]types.Op, 1)
+			data := make(map[string]float64)
+			data["id"] = float64(session.Id)
+			ops[0] = types.Op{
+				Type: types.Op_Login,
+				Data: data,
+			}
+			session.Write(ops)
 		}
 	}
 }
@@ -62,10 +73,8 @@ func (s *session) Push(id types.ID, ops []types.Op) error {
 	if !ok {
 		return errors.New("Invalid Session id %d")
 	}
-	for op := range ops {
-		bytes, _ := session.WriteBuffer.Encode(op)
-		session.WriteBuffer.Append(bytes)
-	}
+	bytes, _ := session.WriteBuffer.Encode(ops)
+	session.WriteBuffer.Append(bytes)
 	return nil
 }
 
@@ -73,12 +82,25 @@ func (s *session) HandleOp() {
 	for {
 		select {
 		case op := <-s.OpChan:
+			s := op.GetId()
 			switch op.Type {
 			case 1:
 				fmt.Println("create room request")
 				id, room := RoomManager().Add()
-				room.Add(op.Id)
-				op.Id.JoinRoom(id, room.MsgChan)
+				room.GameType = game.Snake{}
+				room.Add(s)
+				s.JoinRoom(id, &room.MsgChan)
+			case 2:
+				d := op.Data["Id"]
+				roomId := types.ID(d)
+				room, err := RoomManager().Get(roomId)
+				if err != nil {
+					log.Printf("Error while join room %v", err)
+				}
+				room.Add(s)
+				s.JoinRoom(roomId, &room.MsgChan)
+			default:
+				log.Printf("op comes here")
 			}
 		}
 	}

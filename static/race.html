@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <script>
+window.myId = 0
 window.addEventListener("load", function(evt) {
     var output = document.getElementById("output");
     var input = document.getElementById("input");
@@ -66,13 +67,21 @@ window.addEventListener("load", function(evt) {
             ws = null;
         }
         ws.onmessage = function(evt) {
-            var json = JSON.parse(evt.data)
-            var op = json.Op
-            switch (op) {
-                case 'ping':
-                    var now = Date.now()
-                    diff = now - Math.floor(json.Data / 1000000)
-                    break;
+            var ops = JSON.parse(evt.data)
+            for (let op of ops) {
+                switch (op.Type) {
+                    case 4:
+                        myId = ops[0].Data.id
+                        break
+                    case 2:
+                        if (!children.hasOwnProperty(op.Data.id)) {
+                            children[op.Data.id] = addImage(op.Data.x, op.Data.y, 'car', 'car')
+                            if (op.Data.id == myId) car = children[op.Data.id]
+                        }
+                        children[op.Data.id].x = op.Data.x
+                        children[op.Data.id].y = op.Data.y
+                        break;
+                }
             }
         }
         ws.onerror = function(evt) {
@@ -86,14 +95,22 @@ window.addEventListener("load", function(evt) {
         }
         try {
             let obj = JSON.parse(input.value)
-            obj.Ts = Date.now()
-            print("SEND: " + obj);
-            ws.send(input.value);
+            send(obj)
         } catch (err) {
-            alert("Invalid json data")
+            alert("Invalid json data" + err)
         }
         return false;
     };
+    function send(obj) {
+        try {
+            obj.Ts = Date.now()
+            buffer = JSON.stringify([obj])
+            print("SEND: " + buffer);
+            ws.send(buffer);
+        } catch (err) {
+            alert("Invalid json data" + err)
+        } 
+    }
     ajax('/wsinfo', function (data) {
         Address = JSON.parse(data).Addr
     })
@@ -151,11 +168,10 @@ window.addEventListener("load", function(evt) {
         bg2.height = 500
         bg.push(bg2)
 
-        car = addImage(0, 0, 'car', 'car')
         requestAnimationFrame(render)
     })
 
-    var children = []
+    var children = {} 
     function addImage(x, y, texture, name) {
         if (imgCache[name]) {
             var child = {
@@ -168,7 +184,6 @@ window.addEventListener("load", function(evt) {
                 height : imgCache[name].img.height,
                 texture : texture
             }
-            children.push(child)
             return child
         } else {
             throw Error("no img " + name + " loaded")
@@ -204,34 +219,35 @@ window.addEventListener("load", function(evt) {
         for (var i in children) {
             var child = children[i]
             if (child.name == 'car') {
-                if (child.x  + child.speedX < 0) {
-                    child.x = 0
-                    child.speedX = 0
-                }
-                if (child.x  + child.speedX > width - child.width) {
-                    child.x = width - child.width
-                    child.speedX = 0
-                }
-                if (child.y + child.speedY < 0) {
-                    child.y = 0
-                    child.speedY = 0
-                }
-                if (child.y + child.speedY > height - child.height) {
-                    child.y = height - child.height
-                    child.speedY = 0
-                }
-                if (pressTime) {
-                    child.x += child.speedX
-                    child.y += child.speedY
-                    graphics.drawImage(imgCache[child.texture].img, child.x, child.y, child.width, child.height)
-                    if (child.speedX || child.speedY) {
-                        ws.send(JSON.stringify({action : "move", x : child.x, y : child.y}));
+                if (child == children[myId]) {
+                    if (child.x  + child.speedX < 0) {
+                        child.x = 0
+                        child.speedX = 0
                     }
-                } else {
-                    child.speedX = 0
-                    child.speedY = 0
-                    graphics.drawImage(imgCache[child.texture].img, child.x, child.y, child.width, child.height)
+                    if (child.x  + child.speedX > width - child.width) {
+                        child.x = width - child.width
+                        child.speedX = 0
+                    }
+                    if (child.y + child.speedY < 0) {
+                        child.y = 0
+                        child.speedY = 0
+                    }
+                    if (child.y + child.speedY > height - child.height) {
+                        child.y = height - child.height
+                        child.speedY = 0
+                    }
+                    if (pressTime) {
+                        child.x += child.speedX
+                        child.y += child.speedY
+                        if (child.speedX || child.speedY) {
+                            send({"Type": 1, Data:{X : child.x, Y : child.y}});
+                        }
+                    } else {
+                        child.speedX = 0
+                        child.speedY = 0
+                    }
                 }
+                graphics.drawImage(imgCache[child.texture].img, child.x, child.y, child.width, child.height)
             }
         }
 
@@ -243,7 +259,7 @@ window.addEventListener("load", function(evt) {
         <form>
             <button id="open">Open</button>
             <button id="close">Close</button>
-            <p><input id="input" type="text" value='{"type":1}'>
+            <p><input id="input" type="text" value='{"Type":1, "Data" :{"Id" : 1}}'>
             <button id="send">Send</button>
         </form>
         <canvas id="myCanvas" style="background-color:black"></canvas>

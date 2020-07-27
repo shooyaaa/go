@@ -1,8 +1,7 @@
 package types
 
 type Game interface {
-	SetRoom(r Room)
-	HandleOps(ops []Op)
-	Sync() []Op
-	GameData() Player
+	HandleOps(r *Room)
+	Sync(r *Room) []Op
+	GameData() *Player
 }

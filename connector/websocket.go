@@ -42,7 +42,7 @@ func (ws *Ws) Connect(w http.ResponseWriter, r *http.Request) {
 		log.Print("Upgrade websocket fail :", err)
 		return
 	}
-	log.Print("Incoming Session %d", &session)
+	log.Print("Incoming Session %d", session.Id)
 	manager.SessionManager().WaitChan <- &session
 	go ws.Commuicate(&session)
 }
@@ -57,7 +57,8 @@ func (ws Ws) Commuicate(session *types.Session) {
 	for {
 		select {
 		case <-session.Ticker.C:
-			err := session.Write([]byte("ping"))
+			ops := make([]types.Op, 1)
+			err := session.Write(ops)
 			if err != nil {
 				log.Printf("Fail to write ping message %d", session.Id)
 				session.Status = types.Close
@@ -68,9 +69,11 @@ func (ws Ws) Commuicate(session *types.Session) {
 				log.Printf("Fail read Readchan : %v", session)
 			}
 			session.ReadBuffer.Append(msg)
-			op, err := session.ReadBuffer.Package(msg)
-			op.Id = session
-			session.OpPipe <- op
+			ops, err := session.ReadBuffer.Package(msg)
+			for _, op := range ops {
+				op.SetId(session)
+				*session.OpPipe <- op
+			}
 			if err != nil {
 				log.Printf("Error message : %v", err)
 			} else {
@@ -79,14 +82,14 @@ func (ws Ws) Commuicate(session *types.Session) {
 		default:
 			if session.Status == types.Pending {
 				session.Status = types.Open
-				go ws.Read(*session)
+				go ws.Read(session)
 			}
 			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }
 
-func (ws Ws) Read(session types.Session) {
+func (ws Ws) Read(session *types.Session) {
 	for {
 		_, buffer, err := session.Conn.(*websocket.Conn).ReadMessage()
 		if err != nil {
