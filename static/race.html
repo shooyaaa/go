@@ -105,7 +105,7 @@ window.addEventListener("load", function(evt) {
         try {
             obj.Ts = Date.now()
             buffer = JSON.stringify([obj])
-            print("SEND: " + buffer);
+            //print("SEND: " + buffer);
             ws.send(buffer);
         } catch (err) {
             alert("Invalid json data" + err)
@@ -157,7 +157,7 @@ window.addEventListener("load", function(evt) {
     var bg1
     var bg = []
     bulkLoader({bg : './bg.jpg', car : './car.png'}).then(result => {
-        bg1 = addImage(0, 0, 'bg', 'bg')
+        /*bg1 = addImage(0, 0, 'bg', 'bg')
         bg1.width = 400
         bg1.speedY = 1
         bg1.height = 500
@@ -166,7 +166,7 @@ window.addEventListener("load", function(evt) {
         bg2.width = 400
         bg2.speedY = 1
         bg2.height = 500
-        bg.push(bg2)
+        bg.push(bg2)*/
 
         requestAnimationFrame(render)
     })
@@ -207,7 +207,7 @@ window.addEventListener("load", function(evt) {
             total = 0
         }
         requestAnimationFrame(render)
-        if (bg[0].y + 1> height) {
+        /*if (bg[0].y + 1> height) {
             var temp = bg.shift()
             bg.push(temp)
         }
@@ -215,7 +215,7 @@ window.addEventListener("load", function(evt) {
         graphics.drawImage(imgCache[bg[0].texture].img, bg[0].x, bg[0].y, bg[0].width, bg[0].height)
         bg[1].y = bg[0].y - bg[1].height
         graphics.drawImage(imgCache[bg[1].texture].img, bg[1].x, bg[1].y, bg[1].width, bg[1].height)
-
+        */
         for (var i in children) {
             var child = children[i]
             if (child.name == 'car') {
@@ -256,14 +256,16 @@ window.addEventListener("load", function(evt) {
 </script>
 </head>
     <body>
+        <div style="position: absolute;">
         <form>
             <button id="open">Open</button>
             <button id="close">Close</button>
             <p><input id="input" type="text" value='{"Type":1, "Data" :{"Id" : 1}}'>
             <button id="send">Send</button>
         </form>
-        <canvas id="myCanvas" style="background-color:black"></canvas>
         <div id="output"></div>
-        <div id="debug" style="position:absolute;top:0px;left:200px"></div>
+        <div id="debug" style="position:absolute;top:0px;left:200px;width:150px"></div>
+        </div>
+        <canvas id="myCanvas" style="background-color:white;width:100%;height:100%"></canvas>
 </body>
 </html>

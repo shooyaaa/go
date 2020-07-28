@@ -42,7 +42,7 @@ func (ws *Ws) Connect(w http.ResponseWriter, r *http.Request) {
 		log.Print("Upgrade websocket fail :", err)
 		return
 	}
-	log.Print("Incoming Session %d", session.Id)
+	log.Printf("Incoming Session %d", session.Id)
 	manager.SessionManager().WaitChan <- &session
 	go ws.Commuicate(&session)
 }
@@ -77,12 +77,15 @@ func (ws Ws) Commuicate(session *types.Session) {
 			if err != nil {
 				log.Printf("Error message : %v", err)
 			} else {
-				log.Printf("Recv message : %v", msg)
+				log.Printf("Recv message : %d", len(ops))
 			}
 		default:
 			if session.Status == types.Pending {
 				session.Status = types.Open
 				go ws.Read(session)
+			} else if session.Status == types.Close {
+				log.Printf("Session closed, so stop communicate with it")
+				return
 			}
 			time.Sleep(5 * time.Millisecond)
 		}
@@ -93,8 +96,18 @@ func (ws Ws) Read(session *types.Session) {
 	for {
 		_, buffer, err := session.Conn.(*websocket.Conn).ReadMessage()
 		if err != nil {
-			log.Printf("Error while Read msg %v", err)
-			break
+			if _, ok := err.(*websocket.CloseError); ok {
+				log.Printf("Error while Read msg %v", err)
+				session.Status = types.Close
+				data := make(map[string]float64)
+				data["Id"] = float64(session.Id)
+				op := types.Op{
+					Type: types.Op_Logout,
+					Data: data,
+				}
+				manager.SessionManager().OpChan <- op
+				return
+			}
 		} else {
 			session.ReadChan <- buffer
 		}

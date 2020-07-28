@@ -77,6 +77,10 @@ func (r *Room) Tick() {
 			r.GameType.HandleOps(r)
 			ops := r.GameType.Sync(r)
 			for session, _ := range r.members {
+				if session.Status == Close {
+					delete(r.members, session)
+					continue
+				}
 				err := session.Write(ops)
 				if err != nil {
 					log.Printf("write error %v", err)
