@@ -14,5 +14,14 @@ func main() {
 		Root:      "../static",
 	}
 	manager.SessionManager().Work()
-	ws.Run()
+	go ws.Run()
+	simple := types.Simple{}
+	var uuid types.UUID
+	uuid = &simple
+	tcp := connector.Tcp{
+		Id:        uuid,
+		Sessions:  make(map[types.ID]types.Session),
+		HeartBeat: 5,
+	}
+	tcp.Listen("127.0.0.1:3352")
 }

@@ -30,6 +30,10 @@ func (r *Room) Init() {
 	go r.Tick()
 }
 
+func (r *Room) resetMsgChan() {
+	r.msgBuffer = make([]Op, 100)
+}
+
 func (r *Room) Add(s *Session) error {
 	count := int16(len(r.members))
 	if count >= r.MaxMember {
@@ -81,11 +85,12 @@ func (r *Room) Tick() {
 					delete(r.members, session)
 					continue
 				}
-				err := session.Write(ops)
+				_, err := session.Write(ops)
 				if err != nil {
 					log.Printf("write error %v", err)
 				}
 			}
+			r.resetMsgChan()
 		case op := <-r.MsgChan:
 			if op.Ts >= r.FrameTime {
 				r.msgBuffer = append(r.msgBuffer, op)

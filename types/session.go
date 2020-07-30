@@ -18,7 +18,7 @@ const (
 type Session struct {
 	Id          ID
 	Player      Player
-	Conn        interface{}
+	Conn        Conn
 	Ticker      *time.Ticker
 	ReadChan    chan []byte
 	ReadBuffer  Buffer
@@ -32,12 +32,34 @@ func (s *Session) SetPipe(pipe *chan Op) {
 	s.Status = Pending
 }
 
-func (s *Session) Write(i []Op) error {
+func (s *Session) Write(i []Op) (int, error) {
 	data, err := s.WriteBuffer.Encode(i)
 	if err != nil {
 		log.Printf("Error encode data %v", err)
 	}
-	return s.Conn.(*websocket.Conn).WriteMessage(websocket.TextMessage, data)
+	return s.Conn.Write(data)
+}
+
+func (s *Session) Read() {
+	for {
+		buffer, err := s.Conn.Read()
+		if err != nil {
+			if _, ok := err.(*websocket.CloseError); ok {
+				log.Printf("Error while Read msg %v", err)
+				s.Status = Close
+				data := make(map[string]float64)
+				data["Id"] = float64(s.Id)
+				op := Op{
+					Type: Op_Logout,
+					Data: data,
+				}
+				*s.OpPipe <- op
+				return
+			}
+		} else {
+			s.ReadChan <- buffer
+		}
+	}
 }
 
 func (s *Session) JoinRoom(roomId ID, ch *chan Op) {

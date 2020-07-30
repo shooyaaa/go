@@ -17,6 +17,24 @@ type Ws struct {
 	Root      string
 }
 
+type WsConn struct {
+	conn *websocket.Conn
+}
+
+func (wc WsConn) Read() ([]byte, error) {
+	_, buffer, err := wc.conn.ReadMessage()
+	return buffer, err
+}
+
+func (wc WsConn) Write(bytes []byte) (int, error) {
+	err := wc.conn.WriteMessage(websocket.TextMessage, bytes)
+	count := 0
+	if err == nil {
+		count = len(bytes)
+	}
+	return count, err
+}
+
 func (ws *Ws) Run() {
 	server := HttpServer{
 		Root:    ws.Root,
@@ -33,7 +51,7 @@ func (ws *Ws) Connect(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	session := types.Session{
 		Id:          ws.Id.NewUUID(),
-		Conn:        conn,
+		Conn:        WsConn{conn: conn},
 		ReadBuffer:  types.Buffer{Codec: &types.Json{}},
 		WriteBuffer: types.Buffer{Codec: &types.Json{}},
 		Status:      types.Waiting,
@@ -58,7 +76,7 @@ func (ws Ws) Commuicate(session *types.Session) {
 		select {
 		case <-session.Ticker.C:
 			ops := make([]types.Op, 1)
-			err := session.Write(ops)
+			_, err := session.Write(ops)
 			if err != nil {
 				log.Printf("Fail to write ping message %d", session.Id)
 				session.Status = types.Close
@@ -70,46 +88,24 @@ func (ws Ws) Commuicate(session *types.Session) {
 			}
 			session.ReadBuffer.Append(msg)
 			ops, err := session.ReadBuffer.Package(msg)
-			for _, op := range ops {
-				op.SetId(session)
-				*session.OpPipe <- op
-			}
 			if err != nil {
 				log.Printf("Error message : %v", err)
 			} else {
+				for _, op := range ops {
+					op.SetId(session)
+					*session.OpPipe <- op
+				}
 				log.Printf("Recv message : %d", len(ops))
 			}
 		default:
 			if session.Status == types.Pending {
 				session.Status = types.Open
-				go ws.Read(session)
+				go session.Read()
 			} else if session.Status == types.Close {
 				log.Printf("Session closed, so stop communicate with it")
 				return
 			}
 			time.Sleep(5 * time.Millisecond)
-		}
-	}
-}
-
-func (ws Ws) Read(session *types.Session) {
-	for {
-		_, buffer, err := session.Conn.(*websocket.Conn).ReadMessage()
-		if err != nil {
-			if _, ok := err.(*websocket.CloseError); ok {
-				log.Printf("Error while Read msg %v", err)
-				session.Status = types.Close
-				data := make(map[string]float64)
-				data["Id"] = float64(session.Id)
-				op := types.Op{
-					Type: types.Op_Logout,
-					Data: data,
-				}
-				manager.SessionManager().OpChan <- op
-				return
-			}
-		} else {
-			session.ReadChan <- buffer
 		}
 	}
 }
