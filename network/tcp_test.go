@@ -1,4 +1,4 @@
-package connector
+package network
 
 import (
 	"testing"

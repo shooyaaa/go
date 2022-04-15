@@ -1,11 +1,10 @@
-package connector
+package network
 
 import (
-	"net/http"
 	"encoding/json"
 	"log"
+	"net/http"
 )
-
 
 type HttpHandler func(http.ResponseWriter, *http.Request)
 
@@ -36,6 +35,11 @@ func (hs *HttpServer) Run() {
 	}
 }
 
+func (hs *HttpServer) Close() error {
+
+	return nil
+}
+
 func (hs *HttpServer) serveHome(w http.ResponseWriter, r *http.Request) {
 	header := map[string]string{}
 	for key, s := range header {
@@ -45,7 +49,7 @@ func (hs *HttpServer) serveHome(w http.ResponseWriter, r *http.Request) {
 	if handler, ok := hs.Handler[uri]; ok {
 		handler(w, r)
 	} else {
-		log.Printf("file : %v", string(hs.Root + uri))
-		http.ServeFile(w, r, hs.Root + uri)
+		log.Printf("file : %v", string(hs.Root+uri))
+		http.ServeFile(w, r, hs.Root+uri)
 	}
 }

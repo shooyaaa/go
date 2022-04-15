@@ -11,8 +11,8 @@ const (
 type Op struct {
 	Type uint8
 	Ts   int64
-	id   *Session
 	Data map[string]float64
+	id   *Session
 }
 
 func (o *Op) SetId(id *Session) {

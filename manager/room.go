@@ -20,16 +20,16 @@ func RoomManager() *roomManager {
 }
 
 type roomManager struct {
-	rooms map[types.ID]*types.Room
+	rooms map[int64]*types.Room
 	uuid  types.UUID
 }
 
 func (rm *roomManager) Init() {
-	rm.rooms = make(map[types.ID]*types.Room)
+	rm.rooms = make(map[int64]*types.Room)
 	rm.uuid = &types.Simple{}
 }
 
-func (rm *roomManager) Join(id types.ID, playerId *types.Session) error {
+func (rm *roomManager) Join(id int64, playerId *types.Session) error {
 	r, ok := rm.rooms[id]
 	if !ok {
 		return errors.New("Room %d not exists")
@@ -38,7 +38,7 @@ func (rm *roomManager) Join(id types.ID, playerId *types.Session) error {
 	return nil
 }
 
-func (rm *roomManager) Add() (types.ID, *types.Room) {
+func (rm *roomManager) Add() (int64, *types.Room) {
 	id := rm.uuid.NewUUID()
 	room := types.Room{}
 	room.Init()
@@ -46,7 +46,7 @@ func (rm *roomManager) Add() (types.ID, *types.Room) {
 	return id, rm.rooms[id]
 }
 
-func (rm *roomManager) Get(id types.ID) (*types.Room, error) {
+func (rm *roomManager) Get(id int64) (*types.Room, error) {
 	r, ok := rm.rooms[id]
 	if !ok {
 		return nil, errors.New("Room %d not exists")

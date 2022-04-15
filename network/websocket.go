@@ -1,4 +1,4 @@
-package connector
+package network
 
 import (
 	"log"
@@ -6,24 +6,24 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/shooyaaa/manager"
 	"github.com/shooyaaa/types"
 )
 
 type Ws struct {
 	Id        types.UUID
 	HeartBeat time.Duration
-	Addr      string
 	Root      string
+	waitChan  chan *types.Session
+	server    HttpServer
 }
 
 type WsConn struct {
 	conn *websocket.Conn
 }
 
-func (wc WsConn) Read() ([]byte, error) {
-	_, buffer, err := wc.conn.ReadMessage()
-	return buffer, err
+func (wc WsConn) Read(buffer []byte) (int, error) {
+	count, buffer, err := wc.conn.ReadMessage()
+	return count, err
 }
 
 func (wc WsConn) Write(bytes []byte) (int, error) {
@@ -35,39 +35,43 @@ func (wc WsConn) Write(bytes []byte) (int, error) {
 	return count, err
 }
 
-func (ws *Ws) Run() {
-	server := HttpServer{
+func (ws *Ws) Listen(addr string) error {
+	ws.server = HttpServer{
 		Root:    ws.Root,
-		Addr:    ws.Addr,
+		Addr:    addr,
 		Handler: make(map[string]HttpHandler),
 	}
-	server.Register("/ws", ws.Connect)
-	server.Register("/wsinfo", server.Info)
-	server.Run()
+	ws.server.Register("/ws", ws.Connect)
+	ws.server.Register("/wsinfo", ws.server.Info)
+	ws.server.Run()
+	return nil
 }
 
 func (ws *Ws) Connect(w http.ResponseWriter, r *http.Request) {
 	upgrader := websocket.Upgrader{}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	session := types.Session{
-		Id:          ws.Id.NewUUID(),
-		Conn:        WsConn{conn: conn},
-		ReadBuffer:  types.Buffer{Codec: &types.Json{}},
-		WriteBuffer: types.Buffer{Codec: &types.Json{}},
-		Status:      types.Waiting,
+		Id:   ws.Id.NewUUID(),
+		Conn: WsConn{conn: conn},
 	}
 	if err != nil {
 		log.Print("Upgrade websocket fail :", err)
 		return
 	}
 	log.Printf("Incoming Session %d", session.Id)
-	manager.SessionManager().WaitChan <- &session
-	go ws.Commuicate(&session)
+	ws.waitChan <- &session
+	//go ws.Commuicate(&session)
 }
 
-func (ws Ws) Broadcast(i interface{}) {
+func (ws Ws) Accept() *types.Session {
+	return <-ws.waitChan
+}
+func (ws Ws) Close() error {
+	ws.server.Close()
+	return nil
 }
 
+/*
 func (ws Ws) Commuicate(session *types.Session) {
 	session.ReadChan = make(chan []byte)
 	session.Ticker = time.NewTicker(ws.HeartBeat * time.Millisecond)
@@ -109,3 +113,6 @@ func (ws Ws) Commuicate(session *types.Session) {
 		}
 	}
 }
+
+
+*/

@@ -1,68 +1,45 @@
 package types
 
 import (
-	"log"
-	"time"
-
-	"github.com/gorilla/websocket"
+	"errors"
+	"io"
 )
 
-const (
-	Close   = 1
-	Open    = 2
-	Pending = 4
-	Waiting = 5
-	InRoom  = 3
-)
+type Handler interface {
+}
+
+var codec Codec
+
+func SetCodec(c Codec) {
+	codec = c
+}
 
 type Session struct {
-	Id          ID
-	Player      Player
-	Conn        Conn
-	Ticker      *time.Ticker
-	ReadChan    chan []byte
-	ReadBuffer  Buffer
-	WriteBuffer Buffer
-	Status      uint8
-	OpPipe      *chan Op
+	Id      int64
+	handler Handler
+	Conn    io.ReadWriter
 }
 
-func (s *Session) SetPipe(pipe *chan Op) {
-	s.OpPipe = pipe
-	s.Status = Pending
+func (s *Session) WriteWithCodec(msg interface{}, c Codec) (int, error) {
+
+	return 0, nil
 }
 
-func (s *Session) Write(i []Op) (int, error) {
-	data, err := s.WriteBuffer.Encode(i)
-	if err != nil {
-		log.Printf("Error encode data %v", err)
+func (s *Session) ReadWithCodec(c Codec) ([]byte, error) {
+
+	return nil, nil
+}
+
+func (s *Session) Write(msg interface{}) (int, error) {
+	if codec == nil {
+		return -1, errors.New("Default codec should setted")
 	}
-	return s.Conn.Write(data)
+	return s.WriteWithCodec(msg, codec)
 }
 
-func (s *Session) Read() {
-	for {
-		buffer, err := s.Conn.Read()
-		if err != nil {
-			if _, ok := err.(*websocket.CloseError); ok {
-				log.Printf("Error while Read msg %v", err)
-				s.Status = Close
-				data := make(map[string]float64)
-				data["Id"] = float64(s.Id)
-				op := Op{
-					Type: Op_Logout,
-					Data: data,
-				}
-				*s.OpPipe <- op
-				return
-			}
-		} else {
-			s.ReadChan <- buffer
-		}
+func (s *Session) Read() ([]byte, error) {
+	if codec == nil {
+		return nil, errors.New("Default codec should setted")
 	}
-}
-
-func (s *Session) JoinRoom(roomId ID, ch *chan Op) {
-	s.Status = InRoom
-	s.OpPipe = ch
+	return s.ReadWithCodec(codec)
 }

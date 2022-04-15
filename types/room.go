@@ -2,7 +2,6 @@ package types
 
 import (
 	"errors"
-	"log"
 	"time"
 )
 
@@ -73,7 +72,7 @@ func (r *Room) MemberCount() int {
 }
 
 func (r *Room) Tick() {
-	for {
+	/*for {
 		select {
 		case <-r.ticker.C:
 			now := time.Now().UnixNano() / 1000000
@@ -97,5 +96,5 @@ func (r *Room) Tick() {
 			}
 		}
 
-	}
+	}*/
 }
