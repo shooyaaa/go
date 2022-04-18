@@ -2,6 +2,7 @@ package types
 
 import (
 	"errors"
+	"github.com/shooyaaa/log"
 	"time"
 )
 
@@ -39,7 +40,32 @@ func (r *Room) Add(s *Session) error {
 		return errors.New("Room fulled")
 	}
 	r.members[s] = r.GameType.GameData()
+	s.SetOwner(r)
 	return nil
+}
+
+func (r *Room) OpHandler(op Op, session *Session) {
+	switch op.Type {
+	case Op_Logout:
+		delete(r.members, session)
+	case Op_Sync_Data:
+		gameData := r.members[session]
+		x, ok := op.Data["x"]
+		if ok {
+			gameData.X = x
+		}
+		y, ok := op.Data["y"]
+		if ok {
+			gameData.Y = y
+		}
+		log.DebugF("Player %v moved to x: %v, y : %v", session.Id, gameData.X, gameData.Y)
+	default:
+		log.Debug("op comes here")
+	}
+}
+
+func (r *Room) SessionClose(id int64) {
+
 }
 
 func (r *Room) Leave(id *Session) error {

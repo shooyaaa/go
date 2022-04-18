@@ -41,9 +41,10 @@ func (ws *Ws) Listen(addr string) error {
 		Addr:    addr,
 		Handler: make(map[string]HttpHandler),
 	}
+	ws.waitChan = make(chan *types.Session)
 	ws.server.Register("/ws", ws.Connect)
 	ws.server.Register("/wsinfo", ws.server.Info)
-	ws.server.Run()
+	go ws.server.Run()
 	return nil
 }
 

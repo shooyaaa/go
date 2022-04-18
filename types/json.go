@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"encoding/json"
 )
 
@@ -12,6 +13,14 @@ func (j *Json) Encode(i []Op) ([]byte, error) {
 }
 
 func (j *Json) Decode(data []byte, i *[]Op) (int, error) {
-	err := json.Unmarshal(data, i)
-	return len(data), err
+	dec := json.NewDecoder(bytes.NewReader(data))
+	for dec.More() {
+		err := dec.Decode(i)
+		if err != nil {
+			return 0, err
+		} else {
+			break
+		}
+	}
+	return int(dec.InputOffset()), nil
 }

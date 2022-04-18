@@ -1,8 +1,6 @@
 package game
 
 import (
-	"log"
-
 	"github.com/shooyaaa/types"
 )
 
@@ -16,24 +14,6 @@ type Snake struct {
 
 type SnakeData struct {
 	types.Player
-}
-
-func (s Snake) HandleOps(r *types.Room) {
-	for _, msg := range r.GetMsgBuffer() {
-		session := msg.GetId()
-		gameData, err := r.GetMember(session)
-		if err != nil {
-			log.Printf("Error while HandleOps %v", err)
-			continue
-		}
-		switch msg.Type {
-		case Move:
-			x := int(msg.Data["X"])
-			gameData.X = x
-			y := int(msg.Data["Y"])
-			gameData.Y = y
-		}
-	}
 }
 
 func (s Snake) Sync(r *types.Room) []types.Op {

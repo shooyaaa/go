@@ -2,11 +2,9 @@ package manager
 
 import (
 	"errors"
-	"fmt"
-	"log"
-	"sync"
-
 	"github.com/shooyaaa/game"
+	"github.com/shooyaaa/log"
+	"sync"
 
 	"github.com/shooyaaa/types"
 )
@@ -36,9 +34,8 @@ func (s *sm) Init() {
 }
 
 func (s *sm) Work() {
-	fmt.Printf("Start work")
+	log.Debug("session manager start Work")
 	go s.Accept()
-	go s.HandleOp()
 }
 
 func (s *sm) Accept() {
@@ -46,7 +43,8 @@ func (s *sm) Accept() {
 		select {
 		case session := <-s.WaitChan:
 			s.list[session.Id] = session
-			fmt.Printf("New session %d", session.Id)
+			session.SetOwner(s)
+			log.DebugF("New session %v", session.Id)
 			ops := make([]types.Op, 1)
 			data := make(map[string]float64)
 			data["id"] = float64(session.Id)
@@ -76,31 +74,29 @@ func (s *sm) Push(id int64, ops []types.Op) error {
 	return nil
 }
 
-func (s *sm) HandleOp() {
-	for {
-		select {
-		case op := <-s.OpChan:
-			session := op.GetId()
-			switch op.Type {
-			case types.Op_Create_Room:
-				fmt.Println("create room request")
-				_, room := RoomManager().Add()
-				room.GameType = game.Snake{}
-				room.Add(session)
-			case types.Op_Join_Room:
-				d := op.Data["Id"]
-				roomId := int64(d)
-				room, err := RoomManager().Get(roomId)
-				if err != nil {
-					log.Printf("Error while join room %v", err)
-				}
-				room.Add(session)
-			case types.Op_Logout:
-				id := int64(op.Data["Id"])
-				delete(s.list, id)
-			default:
-				log.Printf("op comes here")
-			}
+func (s *sm) OpHandler(op types.Op, session *types.Session) {
+	switch op.Type {
+	case types.Op_Create_Room:
+		log.Debug("create room request")
+		_, room := RoomManager().Add()
+		room.GameType = game.Snake{}
+		room.Add(session)
+	case types.Op_Join_Room:
+		d := op.Data["Id"]
+		roomId := int64(d)
+		room, err := RoomManager().Get(roomId)
+		if err != nil {
+			log.DebugF("Error while join room %v", err)
 		}
+		room.Add(session)
+	case types.Op_Logout:
+		id := int64(op.Data["Id"])
+		delete(s.list, id)
+	default:
+		log.Debug("session manager op comes here")
 	}
+}
+func (s *sm) SessionClose(id int64) {
+	log.DebugF("session close in session manager: %v", id)
+	delete(s.list, id)
 }

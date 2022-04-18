@@ -12,13 +12,4 @@ type Op struct {
 	Type uint8
 	Ts   int64
 	Data map[string]float64
-	id   *Session
-}
-
-func (o *Op) SetId(id *Session) {
-	o.id = id
-}
-
-func (o *Op) GetId() *Session {
-	return o.id
 }
