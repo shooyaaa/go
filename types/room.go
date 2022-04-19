@@ -10,11 +10,11 @@ type Room struct {
 	members   map[*Session]*Player
 	MaxMember int16
 	ticker    *time.Ticker
-	MsgChan   chan Op
+	MsgChan   chan OpWithSession
 	GameType  Game
 	Interval  uint16
 	FrameTime int64
-	msgBuffer []Op
+	msgBuffer []OpWithSession
 }
 
 func (r *Room) Init() {
@@ -25,13 +25,13 @@ func (r *Room) Init() {
 	if r.MaxMember == 0 {
 		r.MaxMember = 2000
 	}
-	r.MsgChan = make(chan Op, 100)
+	r.MsgChan = make(chan OpWithSession, 100)
 	r.members = make(map[*Session]*Player)
 	go r.Tick()
 }
 
 func (r *Room) resetMsgChan() {
-	r.msgBuffer = make([]Op, 100)
+	r.msgBuffer = make([]OpWithSession, 100)
 }
 
 func (r *Room) Add(s *Session) error {
@@ -43,8 +43,15 @@ func (r *Room) Add(s *Session) error {
 	s.SetOwner(r)
 	return nil
 }
-
 func (r *Room) OpHandler(op Op, session *Session) {
+	opSession := OpWithSession{
+		Op:      op,
+		session: session,
+	}
+	r.MsgChan <- opSession
+}
+
+func (r *Room) OpHandler1(op Op, session *Session) {
 	switch op.Type {
 	case Op_Logout:
 		delete(r.members, session)
@@ -60,7 +67,7 @@ func (r *Room) OpHandler(op Op, session *Session) {
 		}
 		log.DebugF("Player %v moved to x: %v, y : %v", session.Id, gameData.X, gameData.Y)
 	default:
-		log.Debug("op comes here")
+		log.WarnF("unhandled op in room %v", op.Type)
 	}
 }
 
@@ -89,32 +96,17 @@ func (r *Room) AllMembers() map[*Session]*Player {
 	return r.members
 }
 
-func (r *Room) GetMsgBuffer() []Op {
-	return r.msgBuffer
-}
-
 func (r *Room) MemberCount() int {
 	return len(r.members)
 }
 
 func (r *Room) Tick() {
-	/*for {
+	for {
 		select {
 		case <-r.ticker.C:
 			now := time.Now().UnixNano() / 1000000
 			r.FrameTime = now - int64(r.Interval)
-			r.GameType.HandleOps(r)
-			ops := r.GameType.Sync(r)
-			for session, _ := range r.members {
-				if session.Status == Close {
-					delete(r.members, session)
-					continue
-				}
-				_, err := session.Write(ops)
-				if err != nil {
-					log.Printf("write error %v", err)
-				}
-			}
+			r.GameType.Play(r.msgBuffer)
 			r.resetMsgChan()
 		case op := <-r.MsgChan:
 			if op.Ts >= r.FrameTime {
@@ -122,5 +114,5 @@ func (r *Room) Tick() {
 			}
 		}
 
-	}*/
+	}
 }

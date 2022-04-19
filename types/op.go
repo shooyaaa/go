@@ -13,3 +13,8 @@ type Op struct {
 	Ts   int64
 	Data map[string]float64
 }
+
+type OpWithSession struct {
+	Op
+	session *Session
+}

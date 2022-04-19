@@ -10,28 +10,17 @@ const (
 )
 
 type Snake struct {
+	players *types.Player
 }
 
 type SnakeData struct {
 	types.Player
 }
 
-func (s Snake) Sync(r *types.Room) []types.Op {
-	ops := make([]types.Op, r.MemberCount())
-	count := 0
-	for session, gameData := range r.AllMembers() {
-		dict := make(map[string]float64)
-		dict["x"] = float64(gameData.X)
-		dict["y"] = float64(gameData.Y)
-		dict["id"] = float64(session.Id)
-		ops[count] = types.Op{
-			Type: Sync,
-			Ts:   r.FrameTime,
-			Data: dict,
-		}
-		count++
+func (s Snake) Play(ops []types.OpWithSession) {
+	for _, op := range (ops) {
+
 	}
-	return ops
 }
 
 func (s Snake) GameData() *types.Player {
