@@ -1,4 +1,4 @@
-package types
+package op
 
 const (
 	Op_Create_Room = 1
@@ -11,10 +11,5 @@ const (
 type Op struct {
 	Type uint8
 	Ts   int64
-	Data map[string]float64
-}
-
-type OpWithSession struct {
-	Op
-	session *Session
+	Data map[string]interface{}
 }

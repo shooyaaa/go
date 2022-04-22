@@ -91,7 +91,7 @@ func Csum(data []byte, srcip, dstip [4]byte) uint16 {
 		srcip[0], srcip[1], srcip[2], srcip[3],
 		dstip[0], dstip[1], dstip[2], dstip[3],
 		0,                  // zero
-		6,                  // protocol number (6 == TCP)
+		6,                  // router number (6 == TCP)
 		0, byte(len(data)), // TCP length (16 bits), not inc pseudo header
 	}
 

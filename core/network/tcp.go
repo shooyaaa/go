@@ -1,7 +1,9 @@
 package network
 
 import (
-	"github.com/shooyaaa/types"
+	"fmt"
+	"github.com/shooyaaa/core/session"
+	"github.com/shooyaaa/core/types"
 	"log"
 	"net"
 	"time"
@@ -9,7 +11,7 @@ import (
 
 type Tcp struct {
 	Id        types.UUID
-	Sessions  map[int64]types.Session
+	Sessions  map[int64]session.Session
 	HeartBeat time.Duration
 	link      net.Listener
 }
@@ -22,6 +24,14 @@ func (tc TcpConn) Read() ([]byte, error) {
 	bytes := make([]byte, 1024)
 	_, err := tc.conn.Read(bytes)
 	return bytes, err
+}
+func (tc *TcpConn) Dial(host string, port int) error {
+	conn, err := net.Dial("tcp", fmt.Sprintf("%v:%v", host, port))
+	if err != nil {
+		return err
+	}
+	tc.conn = conn
+	return nil
 }
 
 func (tc TcpConn) Write(bytes []byte) (int, error) {
@@ -42,7 +52,7 @@ func (tcp *Tcp) Listen(addr string) error {
 	return nil
 }
 
-func (tcp *Tcp) Accept() *types.Session {
+func (tcp *Tcp) Accept() *session.Session {
 	for {
 		for tcp.link == nil {
 			time.Sleep(time.Millisecond)
@@ -52,7 +62,7 @@ func (tcp *Tcp) Accept() *types.Session {
 			log.Printf("Error while accept %v", err)
 			continue
 		}
-		session := types.Session{
+		session := session.Session{
 			Id:   tcp.Id.NewUUID(),
 			Conn: conn,
 		}

@@ -1,7 +1,8 @@
 package tests
 
 import (
-	. "github.com/shooyaaa/types"
+	. "github.com/shooyaaa/core/codec"
+	. "github.com/shooyaaa/core/op"
 	"net"
 	"testing"
 )

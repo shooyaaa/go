@@ -1,21 +1,23 @@
-package types
+package session
 
 import (
 	"bytes"
 	"errors"
+	codec2 "github.com/shooyaaa/core/codec"
+	"github.com/shooyaaa/core/op"
 	"github.com/shooyaaa/log"
 	"io"
 	"sync"
 )
 
 type Owner interface {
-	OpHandler(Op, *Session)
+	OpHandler(op.Op, *Session)
 	SessionClose(int64)
 }
 
-var codec Codec
+var codec codec2.Codec
 
-func SetCodec(c Codec) {
+func SetCodec(c codec2.Codec) {
 	codec = c
 }
 
@@ -26,33 +28,34 @@ type Session struct {
 	buffer *bytes.Buffer
 }
 
-func (s *Session) WriteWithCodec(msg []Op, c Codec) (int, error) {
+func (s *Session) WriteWithCodec(msg []op.Op, c codec2.Codec) (int, error) {
 	buffer, _ := c.Encode(msg)
 	s.Conn.Write(buffer)
 	return 0, nil
 }
 
-func (s *Session) ReadWithCodec(c Codec) ([]Op, error) {
+func (s *Session) ReadWithCodec(c codec2.Codec) ([]op.Op, error) {
 	buffer := make([]byte, 1024)
 	count, err := s.Conn.Read(buffer)
 	if err != nil {
 		return nil, err
 	}
 	s.buffer.Write(buffer[0:count])
-	ops := make([]Op, 0)
-	reduced, err := c.Decode(s.buffer.Bytes(), &ops)
+	ops := make([]op.Op, 0)
+	i, reduced, err := c.Decode(s.buffer.Bytes())
+	ops = i.([]op.Op)
 	s.buffer.Next(reduced)
 	return ops, err
 }
 
-func (s *Session) Write(msg []Op) (int, error) {
+func (s *Session) Write(msg []op.Op) (int, error) {
 	if codec == nil {
 		return -1, errors.New("Default codec should setted")
 	}
 	return s.WriteWithCodec(msg, codec)
 }
 
-func (s *Session) Read() ([]Op, error) {
+func (s *Session) Read() ([]op.Op, error) {
 	if codec == nil {
 		return nil, errors.New("Default codec should setted")
 	}

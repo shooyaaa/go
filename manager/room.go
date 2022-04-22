@@ -2,9 +2,9 @@ package manager
 
 import (
 	"errors"
+	"github.com/shooyaaa/core/session"
+	types2 "github.com/shooyaaa/core/types"
 	"sync"
-
-	"github.com/shooyaaa/types"
 )
 
 var once sync.Once
@@ -20,16 +20,16 @@ func RoomManager() *roomManager {
 }
 
 type roomManager struct {
-	rooms map[int64]*types.Room
-	uuid  types.UUID
+	rooms map[int64]*types2.Room
+	uuid  types2.UUID
 }
 
 func (rm *roomManager) Init() {
-	rm.rooms = make(map[int64]*types.Room)
-	rm.uuid = &types.Simple{}
+	rm.rooms = make(map[int64]*types2.Room)
+	rm.uuid = &types2.Simple{}
 }
 
-func (rm *roomManager) Join(id int64, playerId *types.Session) error {
+func (rm *roomManager) Join(id int64, playerId *session.Session) error {
 	r, ok := rm.rooms[id]
 	if !ok {
 		return errors.New("Room %d not exists")
@@ -38,15 +38,15 @@ func (rm *roomManager) Join(id int64, playerId *types.Session) error {
 	return nil
 }
 
-func (rm *roomManager) Add() (int64, *types.Room) {
+func (rm *roomManager) Add() (int64, *types2.Room) {
 	id := rm.uuid.NewUUID()
-	room := types.Room{}
+	room := types2.Room{}
 	room.Init()
 	rm.rooms[id] = &room
 	return id, rm.rooms[id]
 }
 
-func (rm *roomManager) Get(id int64) (*types.Room, error) {
+func (rm *roomManager) Get(id int64) (*types2.Room, error) {
 	r, ok := rm.rooms[id]
 	if !ok {
 		return nil, errors.New("Room %d not exists")

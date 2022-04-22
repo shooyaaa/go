@@ -1,9 +1,11 @@
 package network
 
-import "github.com/shooyaaa/types"
+import (
+	"github.com/shooyaaa/core/session"
+)
 
 type Server interface {
 	Listen(addr string) error
-	Accept() *types.Session
+	Accept() *session.Session
 	Close() error
 }

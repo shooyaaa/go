@@ -1,19 +1,20 @@
 package network
 
 import (
+	"github.com/shooyaaa/core/session"
+	types2 "github.com/shooyaaa/core/types"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/shooyaaa/types"
 )
 
 type Ws struct {
-	Id        types.UUID
+	Id        types2.UUID
 	HeartBeat time.Duration
 	Root      string
-	waitChan  chan *types.Session
+	waitChan  chan *session.Session
 	server    HttpServer
 }
 
@@ -41,7 +42,7 @@ func (ws *Ws) Listen(addr string) error {
 		Addr:    addr,
 		Handler: make(map[string]HttpHandler),
 	}
-	ws.waitChan = make(chan *types.Session)
+	ws.waitChan = make(chan *session.Session)
 	ws.server.Register("/ws", ws.Connect)
 	ws.server.Register("/wsinfo", ws.server.Info)
 	go ws.server.Run()
@@ -51,7 +52,7 @@ func (ws *Ws) Listen(addr string) error {
 func (ws *Ws) Connect(w http.ResponseWriter, r *http.Request) {
 	upgrader := websocket.Upgrader{}
 	conn, err := upgrader.Upgrade(w, r, nil)
-	session := types.Session{
+	session := session.Session{
 		Id:   ws.Id.NewUUID(),
 		Conn: WsConn{conn: conn},
 	}
@@ -64,7 +65,7 @@ func (ws *Ws) Connect(w http.ResponseWriter, r *http.Request) {
 	//go ws.Commuicate(&session)
 }
 
-func (ws Ws) Accept() *types.Session {
+func (ws Ws) Accept() *session.Session {
 	return <-ws.waitChan
 }
 func (ws Ws) Close() error {
