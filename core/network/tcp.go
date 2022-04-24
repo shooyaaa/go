@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/shooyaaa/core/session"
 	"github.com/shooyaaa/core/types"
+	log2 "github.com/shooyaaa/log"
 	"log"
 	"net"
 	"time"
@@ -11,7 +12,6 @@ import (
 
 type Tcp struct {
 	Id        types.UUID
-	Sessions  map[int64]session.Session
 	HeartBeat time.Duration
 	link      net.Listener
 }
@@ -48,6 +48,8 @@ func (tcp *Tcp) Listen(addr string) error {
 	tcp.link, err = net.Listen("tcp", addr)
 	if err != nil {
 		log.Fatalf("Error listen %v, %v", addr, err)
+	} else {
+		log2.InfoF("tcp server listening %v, %v", addr, err)
 	}
 	return nil
 }
@@ -72,7 +74,7 @@ func (tcp *Tcp) Accept() *session.Session {
 			session.Ticker = time.NewTicker(tcp.HeartBeat * time.Second)
 			defer close(session.ReadChan)
 			tcp.Sessions[session.Id] = session
-			manager.SessionManager().WaitChan <- &session
+			runnable.SessionManager().WaitChan <- &session
 			log.Printf("clients : %v", tcp.Sessions)
 			go tcp.NewClient(&session)
 			go session.Read()

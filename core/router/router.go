@@ -3,8 +3,11 @@ package router
 import (
 	"errors"
 	"fmt"
+	"github.com/shooyaaa/config"
 	"github.com/shooyaaa/core"
+	"github.com/shooyaaa/core/library"
 	"github.com/shooyaaa/core/network"
+	"github.com/shooyaaa/log"
 	"strconv"
 	"strings"
 )
@@ -15,6 +18,12 @@ const (
 	TCP_ROUTER = iota
 	CHAN_ROUTER
 )
+
+var CENTRAL_REGISTRY string = TcpRouterName(config.CentralRegistryName)
+
+func TcpRouterName(name string) string {
+	return fmt.Sprintf("%v:%v", TCP_ROUTER, name)
+}
 
 type Router interface {
 	Forward(*Package) error
@@ -27,6 +36,7 @@ type TcpRouter struct {
 }
 
 func (tr *TcpRouter) Forward(p *Package) error {
+	log.DebugF("tcp router forward package seq: %v, ack: %v", p.seq, p.ack)
 	conn := network.TcpConn{}
 	err := conn.Dial(tr.host, tr.port)
 	if err != nil {
@@ -101,7 +111,8 @@ func LookUp(entity string) (Router, error) {
 
 func init() {
 	dummyRegistry = DummyRegistry{tables: map[string]chan *Package{}}
-	tcpRegistry = TcpRegistry{tables: map[string]string{}}
+	tcpRegistry = TcpRegistry{tables: library.Redis{}}
+	tcpRegistry.tables.Init(map[string]interface{}{"address": config.RegistryRedisAddress})
 }
 
 func AddTcpAddress(name string, addr string) {

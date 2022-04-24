@@ -4,6 +4,10 @@ import (
 	"github.com/shooyaaa/core/codec"
 )
 
+type PackageHandler interface {
+	HandlePackage(*Package) error
+}
+
 type Header struct {
 	seq   int64
 	ack   int64

@@ -23,13 +23,16 @@ func TestTcpRouter_Deliver(t *testing.T) {
 	if r != nil {
 		t.Fatalf("router shoulde be nil %v", r)
 	}
-	AddTcpAddress("xiaocui", "127.0.0.1:80")
+	host := "127.0.0.1"
+	port := "8087"
+	AddTcpAddress("xiaocui", host+":"+port)
 	r, err = LookUp("0:xiaocui")
 	tcp, ok := r.(*TcpRouter)
 	if err != nil || ok == false {
 		t.Fatalf("router not found %v", err)
 	}
-	if r.ToString() != fmt.Sprintf("%v:%v:%v", TCP_ROUTER, "127.0.0.1", "80") {
+	tcp.Listen("127.0.0.1:8087")
+	if r.ToString() != fmt.Sprintf("%v:%v:%v", TCP_ROUTER, host, port) {
 		t.Fatalf("the address found is not correct %v", r.ToString())
 	}
 	err = tcp.Forward(&p)

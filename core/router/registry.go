@@ -3,6 +3,7 @@ package router
 import (
 	"errors"
 	"github.com/shooyaaa/core"
+	"github.com/shooyaaa/core/storage"
 )
 
 type DummyRegistry struct {
@@ -26,22 +27,30 @@ func (dr *DummyRegistry) Delete(name string) {
 }
 
 type TcpRegistry struct {
-	tables map[string]string
+	tables storage.Cache
 }
 
 func (tr *TcpRegistry) Get(id string) (string, error) {
-	entry, ok := tr.tables[id]
-	if ok {
+	entry := tr.tables.GetString(id)
+	if len(entry) > 0 {
 		return entry, nil
 	}
 	return "", errors.New(core.NOT_FOUND)
 }
 
 func (tr *TcpRegistry) Set(id string, value string) error {
-	tr.tables[id] = value
+	tr.tables.SetString(id, value)
 	return nil
 }
 
 func (tr *TcpRegistry) Remove(name string) {
-	delete(tr.tables, name)
+	tr.tables.Delete(name)
+}
+
+func (tr *TcpRegistry) Init(params map[string]interface{}) {
+	tr.tables.Init(params)
+}
+
+func (tr *TcpRegistry) CentralAddress() string {
+	return "central_address.local"
 }
