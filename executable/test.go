@@ -1,4 +1,4 @@
-package main
+package executable
 
 import (
 	network2 "github.com/shooyaaa/core/network"

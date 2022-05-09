@@ -1,12 +1,10 @@
 package router
 
 import (
-	"errors"
 	"fmt"
 	"github.com/shooyaaa/config"
-	"github.com/shooyaaa/core"
-	"github.com/shooyaaa/core/library"
 	"github.com/shooyaaa/core/network"
+	"github.com/shooyaaa/core/storage"
 	"github.com/shooyaaa/log"
 	"strconv"
 	"strings"
@@ -28,11 +26,13 @@ func TcpRouterName(name string) string {
 type Router interface {
 	Forward(*Package) error
 	ToString() string
+	LookUp(id string) (Router, error)
 }
 
 type TcpRouter struct {
 	host string
 	port int
+	TcpRegistry
 }
 
 func (tr *TcpRouter) Forward(p *Package) error {
@@ -46,23 +46,44 @@ func (tr *TcpRouter) Forward(p *Package) error {
 	return nil
 }
 
+func (tr *TcpRouter) LookUp(entity string) (Router, error) {
+	addr, err := tr.Get(entity)
+	if err != nil {
+		return nil, err
+	}
+	data := strings.Split(addr, ":")
+	port, err := strconv.Atoi(data[1])
+	if err != nil {
+		return nil, err
+	}
+	return NewTcpRouter(data[0], port, tr.tables), nil
+}
+
 func (tr *TcpRouter) ToString() string {
 	return fmt.Sprintf("%v:%v:%v", TCP_ROUTER, tr.host, tr.port)
 }
-func NewTcpRouter(host string, port int) *TcpRouter {
+func NewTcpRouter(host string, port int, cache storage.Cache) *TcpRouter {
 	tr := TcpRouter{}
-	tr.host = host
-	tr.port = port
+	tr.tables = cache
 	return &tr
 }
 
 type ChanRouter struct {
 	ch chan *Package
+	DummyRegistry
 }
 
 func (cr *ChanRouter) Forward(p *Package) error {
 	cr.ch <- p
 	return nil
+}
+
+func (this *ChanRouter) LookUp(entity string) (Router, error) {
+	ch, err := this.Get(entity)
+	if err != nil {
+		return nil, err
+	}
+	return NewChanRouter(ch), nil
 }
 
 func (cr *ChanRouter) ToString() string {
@@ -74,51 +95,6 @@ func NewChanRouter(ch chan *Package) *ChanRouter {
 	return &cr
 }
 
-var dummyRegistry DummyRegistry
-
-var tcpRegistry TcpRegistry
-
-func LookUp(entity string) (Router, error) {
-	info := strings.Split(entity, ":")
-	routerType, err := strconv.Atoi(info[0])
-	if err != nil {
-		return nil, err
-	}
-	if len(info) < 2 {
-		return nil, errors.New(core.PARAMS_ERROR)
-	}
-	switch routerType {
-	case TCP_ROUTER:
-		addr, err := tcpRegistry.Get(info[1])
-		if err != nil {
-			return nil, err
-		}
-		data := strings.Split(addr, ":")
-		port, err := strconv.Atoi(data[1])
-		if err != nil {
-			return nil, err
-		}
-		return NewTcpRouter(data[0], port), nil
-	case CHAN_ROUTER:
-		ch, err := dummyRegistry.Get(info[1])
-		if err != nil {
-			return nil, err
-		}
-		return NewChanRouter(ch), nil
-	}
-	return nil, errors.New(core.UNKNOWN)
-}
-
 func init() {
-	dummyRegistry = DummyRegistry{tables: map[string]chan *Package{}}
-	tcpRegistry = TcpRegistry{tables: library.Redis{}}
-	tcpRegistry.tables.Init(map[string]interface{}{"address": config.RegistryRedisAddress})
-}
-
-func AddTcpAddress(name string, addr string) {
-	tcpRegistry.Set(name, addr)
-}
-
-func AddDummyAddress(name string, ch chan *Package) {
-	dummyRegistry.Set(name, ch)
+	//tcpRegistry.tables.Init(map[string]interface{}{"address": config.RegistryRedisAddress})
 }

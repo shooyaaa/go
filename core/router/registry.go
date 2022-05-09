@@ -6,6 +6,10 @@ import (
 	"github.com/shooyaaa/core/storage"
 )
 
+type Registry interface {
+	Get(id string) interface{}
+}
+
 type DummyRegistry struct {
 	tables map[string]chan *Package
 }
@@ -43,7 +47,7 @@ func (tr *TcpRegistry) Set(id string, value string) error {
 	return nil
 }
 
-func (tr *TcpRegistry) Remove(name string) {
+func (tr *TcpRegistry) Delete(name string) {
 	tr.tables.Delete(name)
 }
 

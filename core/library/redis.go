@@ -13,7 +13,10 @@ type Redis struct {
 func (r Redis) Init(params map[string]interface{}) {
 	options := UniversalOptions{}
 	options.Addrs = params["address"].([]string)
-	options.MasterName = params["master"].(string)
+	master, ok := params["master"].(string)
+	if ok {
+		options.MasterName = master
+	}
 	r.rdb = NewUniversalClient(&options)
 }
 
