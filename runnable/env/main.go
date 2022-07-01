@@ -15,7 +15,7 @@ func (c Env) Run() library.Module {
 
 func (e Env) Start() {
 	if _, err := os.Stat(config.TmpDir); err != nil {
-		os.Mkdir(config.TmpDir, 0660)
+		os.Mkdir(config.TmpDir, 0770)
 	}
 }
 func (e Env) Stop() {

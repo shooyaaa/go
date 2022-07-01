@@ -2,6 +2,7 @@ package library
 
 import (
 	"fmt"
+	"github.com/shooyaaa/log"
 	"math/rand"
 	"os"
 	"time"
@@ -63,10 +64,14 @@ func Line(cd []*ChartData) string {
 		},
 	}
 	imageFile := RandomFileName("png")
-	writer, _ := os.Create(imageFile)
-	err := graph.Render(chart.PNG, writer)
+	cwd, _ := os.Getwd()
+	writer, err := os.Create(cwd + "/" + imageFile)
 	if err != nil {
-		fmt.Println("Error: render chart", err)
+		log.DebugF("create file error %v")
+	}
+	err = graph.Render(chart.PNG, writer)
+	if err != nil {
+		fmt.Println("Error: render chart", err, cwd)
 	}
 	return imageFile
 }

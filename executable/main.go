@@ -2,16 +2,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/shooyaaa/runnable/env"
-	"os"
-	"os/signal"
-	"time"
-
 	"github.com/shooyaaa/core/library"
 	network2 "github.com/shooyaaa/core/network"
 	types2 "github.com/shooyaaa/core/types"
 	"github.com/shooyaaa/log"
 	"github.com/shooyaaa/runnable/cron"
+	"github.com/shooyaaa/runnable/env"
+	"os"
+	"os/signal"
 )
 
 func main() {
@@ -30,22 +28,13 @@ func main() {
 	go library.ModuleManager.Run()
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt, os.Kill)
-	for {
-		select {
-		case s := <-ch:
-			fmt.Println("signal caught", s)
-			library.ModuleManager.Exit()
-			return
-		default:
-			time.Sleep(time.Millisecond * 50)
-		}
-	}
+	s := <-ch
+	fmt.Println("signal caught", s)
+	library.ModuleManager.Exit()
 }
 
 func run(s network2.Server, addr string) {
 	s.Listen(addr)
 	log.Info("server listening on: %v", addr)
-	for {
-	}
 	defer s.Close()
 }

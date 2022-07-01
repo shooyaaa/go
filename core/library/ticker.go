@@ -1,7 +1,6 @@
 package library
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -113,9 +112,7 @@ func (t *Ticker) Start() {
 	for {
 		select {
 		case <-ticker.C:
-			fmt.Println("ticker")
 			for _, job := range t.jobs {
-				fmt.Println("stuck here")
 				job.count++
 				if job.count >= job.interval && (job.times > 0 || job.times < 0) && job.valid() {
 					go job.callback()
@@ -126,14 +123,11 @@ func (t *Ticker) Start() {
 				}
 			}
 		case <-t.closeChan:
-			fmt.Println("ticker close")
 			return
 		default:
-			fmt.Println("sleep a bit")
 			time.Sleep(time.Millisecond * 40)
 		}
 	}
-	fmt.Println("ticker returned")
 }
 
 func (t *Ticker) Stop() {
