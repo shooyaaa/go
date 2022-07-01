@@ -1,10 +1,11 @@
-package runnable
+package room
 
 import (
 	"errors"
+	"sync"
+
 	"github.com/shooyaaa/core/session"
 	types2 "github.com/shooyaaa/core/types"
-	"sync"
 )
 
 var once sync.Once
