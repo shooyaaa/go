@@ -11,6 +11,16 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"syscall"
+
+	"golang.org/x/net/ipv4"
+)
+
+const (
+	ICMP_PROTOCOL = 1
+	IGMP_PROTOCOL = 2
+	TCP_PROTOCOL  = 6
+	UDP_PROTOCOL  = 17
 )
 
 func to4byte(addr string) [4]byte {
@@ -23,6 +33,92 @@ func to4byte(addr string) [4]byte {
 	b2, _ := strconv.Atoi(parts[2])
 	b3, _ := strconv.Atoi(parts[3])
 	return [4]byte{byte(b0), byte(b1), byte(b2), byte(b3)}
+}
+
+type IGMP struct {
+	Type         uint8
+	MaxRespTime  uint8
+	Checksum     uint16
+	GroupAddress int
+}
+
+func (igmp IGMP) String() string {
+	msgType := "Unknow"
+	if igmp.Type == 0x11 {
+		msgType = "Membership Query"
+	} else if igmp.Type == 0x12 {
+		msgType = "IGMPv1 Memmbership Report"
+	} else if igmp.Type == 0x16 {
+		msgType = "IGMPv2 Membership Report"
+	} else if igmp.Type == 0x22 {
+		msgType = "IGMPv2 Membership Report"
+	} else if igmp.Type == 0x17 {
+		msgType = "Leave Group"
+	}
+	return fmt.Sprintf("IGMP msg type %s, Max Resp Time %v, Group Address %v", msgType, igmp.MaxRespTime, igmp.GroupAddress)
+}
+
+func NewIGMPHeader(bts []byte) IGMP {
+	igmp := IGMP{}
+	buf := bytes.NewBuffer(bts)
+	binary.Read(buf, binary.BigEndian, &igmp.Type)
+	binary.Read(buf, binary.BigEndian, &igmp.MaxRespTime)
+	binary.Read(buf, binary.BigEndian, &igmp.GroupAddress)
+	return igmp
+}
+
+type ICMP struct {
+	Type     uint8
+	Code     uint8
+	Checksum uint16
+	Rest     int
+}
+
+func (icmp ICMP) String() string {
+	msgType := "Unknow"
+	if icmp.Type == 0 {
+		msgType = "Echo Reply"
+	} else if icmp.Type == 3 {
+		msgType = []string{
+			"Destination network unreachable",
+			"Destination host unreachable",
+			"Destination protocol unreachable",
+			"Destination port unreachable",
+			"Fragmentation required, and DF flag set",
+			"Source route failed",
+			"Destination network unknown",
+			"Destination host unknown",
+			"Source host isolated",
+			"Network administratively prohibited",
+			"Host administratively prohibited",
+			"Network unreachable for ToS",
+			"Host unreachable for ToS",
+			"Communication administratively prohibited",
+			"Host Precedence Violation",
+			"Precedence cutoff in effect",
+		}[icmp.Code]
+	} else if icmp.Type == 8 {
+		msgType = "Echo Request"
+	} else if icmp.Type == 11 {
+		if icmp.Code == 0 {
+			msgType = "TTL expired in transit"
+		} else {
+			msgType = "Fragment reassembly time exceeded"
+		}
+	} else if icmp.Type == 30 {
+		msgType = "Traceroute"
+	}
+	return fmt.Sprintf("ICMP type %s", msgType)
+}
+
+func NewICMPHeader(bts []byte) ICMP {
+	icmp := ICMP{}
+	buf := bytes.NewBuffer(bts)
+	binary.Read(buf, binary.BigEndian, &icmp.Type)
+	binary.Read(buf, binary.BigEndian, &icmp.Code)
+	binary.Read(buf, binary.BigEndian, &icmp.Checksum)
+	binary.Read(buf, binary.BigEndian, &icmp.Rest)
+	return icmp
 }
 
 type TCPHeader struct {
@@ -46,6 +142,24 @@ type TCPOption struct {
 	Data   []byte
 }
 
+func NewTCPHeader(bts []byte) TCPHeader {
+	th := TCPHeader{}
+	buf := bytes.NewBuffer(bts)
+	binary.Read(buf, binary.BigEndian, &th.Source)
+	binary.Read(buf, binary.BigEndian, &th.Destination)
+	binary.Read(buf, binary.BigEndian, &th.SeqNum)
+	binary.Read(buf, binary.BigEndian, &th.AckNum)
+	binary.Read(buf, binary.BigEndian, &th.DataOffset)
+	binary.Read(buf, binary.BigEndian, &th.Reserved)
+	binary.Read(buf, binary.BigEndian, &th.ECN)
+	binary.Read(buf, binary.BigEndian, &th.Ctrl)
+	binary.Read(buf, binary.BigEndian, &th.Window)
+	binary.Read(buf, binary.BigEndian, &th.Checksum)
+	binary.Read(buf, binary.BigEndian, &th.Urgent)
+	binary.Read(buf, binary.BigEndian, &th.Options)
+	return th
+}
+
 func (tcp *TCPHeader) Marshal() []byte {
 
 	buf := new(bytes.Buffer)
@@ -54,8 +168,7 @@ func (tcp *TCPHeader) Marshal() []byte {
 	binary.Write(buf, binary.BigEndian, tcp.SeqNum)
 	binary.Write(buf, binary.BigEndian, tcp.AckNum)
 
-	var mix uint16
-	mix = uint16(tcp.DataOffset)<<12 | // top 4 bits
+	mix := uint16(tcp.DataOffset)<<12 | // top 4 bits
 		uint16(tcp.Reserved)<<9 | // 3 bits
 		uint16(tcp.ECN)<<6 | // 3 bits
 		uint16(tcp.Ctrl) // bottom 6 bits
@@ -130,12 +243,25 @@ func main() {
 	flag.Parse()
 	if *ifName == "" || *portNum == 0 || *host == "" {
 		flag.PrintDefaults()
-		os.Exit(1)
+		//os.Exit(1)
 	}
 
-	addr := ifAddr(*ifName)
-	fmt.Printf("addr %s\n", addr)
-	sendSyn("127.0.0.1", *host, uint16(*portNum))
+	fd, _ := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_TCF)
+	f := os.NewFile(uintptr(fd), fmt.Sprintf("fd %d", fd))
+	for {
+		buf := make([]byte, 1500)
+		f.Read(buf)
+		ip4header, _ := ipv4.ParseHeader(buf[:20])
+		fmt.Println("ip header:", ip4header)
+
+		tcpheader := NewTCPHeader(buf[20:40])
+		fmt.Println("tcp header: ", tcpheader)
+	}
+	/*
+		addr := ifAddr(*ifName)
+		fmt.Printf("addr %s\n", addr)
+		sendSyn("127.0.0.1", *host, uint16(*portNum))
+	*/
 }
 
 func ifAddr(ifName string) net.Addr {
@@ -178,8 +304,6 @@ func sendSyn(sAddr, dAddr string, port uint16) error {
 	if err != nil {
 		log.Fatalf("Dial: %s\n", err)
 	}
-	return nil
-
 	numWrote, err := conn.Write(data)
 	if err != nil {
 		log.Fatalf("Write: %s\n", err)
