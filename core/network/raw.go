@@ -316,3 +316,18 @@ func sendSyn(sAddr, dAddr string, port uint16) error {
 
 	return nil
 }
+
+func SendRaw(p []byte) {
+	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
+	if err != nil {
+		log.Fatal("failed to create raw scoket ", err)
+	}
+	var addr syscall.SockaddrLinklayer
+	addr.Protocol = syscall.ETH_P_ARP
+	addr.Ifindex = interf.Index
+	addr.Hatype = syscall.ARPHRD_ETHER
+	err = syscall.Sendto(fd, p, 0, &addr)
+	if err != nil {
+		log.Fatal("Sendto:", err)
+	}
+}

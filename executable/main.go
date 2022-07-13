@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"net/netip"
 	"os"
 	"os/signal"
 	"syscall"
@@ -20,9 +21,18 @@ func main() {
 
 	i, _ := net.Interfaces()
 	fmt.Println((i))
-	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
+	fd, err := syscall.Socket(syscall.AF_ROUTE, syscall.SOCK_RAW, syscall.ETH_P_ALL)
 	if err != nil {
 		fmt.Println("error while create raw socket ", err)
+	}
+	dmac, _ := net.ParseMAC("9c2b.a6dd.da41")
+	smac, _ := net.ParseMAC("14:7d:da:da:3b:3a")
+	arp, _ := network2.NewPacket(network2.OperationRequest, dmac, netip.MustParseAddr("127.0.0.1"), smac, netip.MustParseAddr("0.0.0.0"))
+	b, _ := arp.MarshalBinary()
+	network2.SendRaw(b)
+	//err = syscall.SetsockoptInt(fd, syscall.IPPROTO_IP, syscall.IP_HDRINCL, 1)
+	if err != nil {
+		panic(err)
 	}
 	f := os.NewFile(uintptr(fd), fmt.Sprintf("fd %d", fd))
 	for {
