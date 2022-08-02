@@ -12,15 +12,145 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
+	"unsafe"
 
 	"golang.org/x/net/ipv4"
 )
+
+/*
+#include <stdint.h>
+#include <stdlib.h>
+
+typedef struct __attribute__((packed))
+{
+    char dest[6];
+    char sender[6];
+    uint16_t protocolType;
+} EthernetHeader;
+
+typedef struct __attribute__((packed))
+{
+    uint16_t hwType;
+    uint16_t protoType;
+    char hwLen;
+    char protocolLen;
+    uint16_t oper;
+    char SHA[6];
+    char SPA[4];
+    char THA[6];
+    char TPA[4];
+} ArpPacket;
+
+typedef struct __attribute__((packed))
+{
+    EthernetHeader eth;
+    ArpPacket arp;
+} EthernetArpPacket;
+
+char* FillRequestPacketFields(char* senderMac, char* senderIp)
+{
+    EthernetArpPacket * packet = malloc(sizeof(EthernetArpPacket));
+    memset(packet, 0, sizeof(EthernetArpPacket));
+    // Ethernet header
+    // Dest = Broadcast (ff:ff:ff:ff:ff)
+    packet->eth.dest[0] = 0xff;
+    packet->eth.dest[1] = 0xff;
+    packet->eth.dest[2] = 0xff;
+    packet->eth.dest[3] = 0xff;
+    packet->eth.dest[4] = 0xff;
+    packet->eth.dest[5] = 0xff;
+
+    packet->eth.sender[0] = strtol(senderMac, NULL, 16); senderMac += 3;
+    packet->eth.sender[1] = strtol(senderMac, NULL, 16); senderMac += 3;
+    packet->eth.sender[2] = strtol(senderMac, NULL, 16); senderMac += 3;
+    packet->eth.sender[3] = strtol(senderMac, NULL, 16); senderMac += 3;
+    packet->eth.sender[4] = strtol(senderMac, NULL, 16); senderMac += 3;
+    packet->eth.sender[5] = strtol(senderMac, NULL, 16);
+
+    packet->eth.protocolType = htons(0x0806); // ARP
+
+    // ARP Packet fields
+    packet->arp.hwType = htons(1); // Ethernet
+    packet->arp.protoType = htons(0x800); //IP;
+    packet->arp.hwLen = 6;
+    packet->arp.protocolLen = 4;
+    packet->arp.oper = htons(2); // response
+
+    // Sender MAC (same as that in eth header)
+    memcpy(packet->arp.SHA, packet->eth.sender, 6);
+
+    // Sender IP
+    packet->arp.SPA[0] = strtol(senderIp, NULL, 10); senderIp = strchr(senderIp, '.') + 1;
+    packet->arp.SPA[1] = strtol(senderIp, NULL, 10); senderIp = strchr(senderIp, '.') + 1;
+    packet->arp.SPA[2] = strtol(senderIp, NULL, 10); senderIp = strchr(senderIp, '.') + 1;
+    packet->arp.SPA[3] = strtol(senderIp, NULL, 10);
+
+    // Dest MAC: Same as SHA, as we use an ARP response
+    memcpy(packet->arp.THA, packet->arp.SHA, 6);
+
+    // Dest IP: Same as SPA
+    memcpy(packet->arp.TPA, packet->arp.SPA, 4);
+
+    return (char*) packet;
+}
+*/
+import "C"
+
+func SendArp() {
+	etherArp := new(C.EthernetArpPacket)
+	size := uint(unsafe.Sizeof(*etherArp))
+	fmt.Println("Size : ", size)
+
+	fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, syscall.ETH_P_ALL)
+	if err != nil {
+		fmt.Println("Error: " + err.Error())
+		return
+	}
+	fmt.Println("Obtained fd ", fd)
+	defer syscall.Close(fd)
+
+	// Get Mac address of vboxnet1
+	interf, err := net.InterfaceByName("enp4s0")
+	if err != nil {
+		fmt.Println("Could not find vboxnet interface")
+		return
+	}
+
+	fmt.Println("Interface hw address: ", interf.HardwareAddr)
+	fmt.Println("Creating request for IP 10.10.10.2 from IP 10.10.10.1")
+
+	iface_cstr := C.CString(interf.HardwareAddr.String())
+	ip_cstr := C.CString("10.10.10.5")
+
+	packet := C.GoBytes(unsafe.Pointer(C.FillRequestPacketFields(iface_cstr, ip_cstr)), C.int(size))
+
+	// Send the packet
+	var addr syscall.SockaddrLinklayer
+	addr.Protocol = syscall.ETH_P_ARP
+	addr.Ifindex = interf.Index
+	addr.Hatype = syscall.ARPHRD_ETHER
+
+	//err = syscall.Sendto(fd, packet, 0, &addr)
+	err = SendRaw(packet)
+
+	if err != nil {
+		fmt.Println("Error: ", err)
+	} else {
+		fmt.Println("Sent packet")
+	}
+
+}
 
 const (
 	ICMP_PROTOCOL = 1
 	IGMP_PROTOCOL = 2
 	TCP_PROTOCOL  = 6
 	UDP_PROTOCOL  = 17
+
+	ICMP_REQUEST     = 8
+	ICMP_REPLY       = 0
+	ICMP_UNREACHABLE = 3
 )
 
 func to4byte(addr string) [4]byte {
@@ -68,15 +198,62 @@ func NewIGMPHeader(bts []byte) IGMP {
 }
 
 type ICMP struct {
-	Type     uint8
-	Code     uint8
-	Checksum uint16
-	Rest     int
+	Type         uint8
+	Code         uint8
+	Checksum     uint16
+	RestOfHeader uint32
+	Data         []byte
+}
+
+func (i *ICMP) CalCheckSum() {
+	data := i.Marshal()
+	var (
+		sum    uint32
+		length int = len(data)
+		index  int
+	)
+	for length > 1 {
+		sum += uint32(data[index])<<8 + uint32(data[index+1])
+		index += 2
+		length -= 2
+	}
+	if length > 0 {
+		sum += uint32(data[index])
+	}
+	sum += (sum >> 16)
+
+	i.Checksum = uint16(^sum)
+}
+
+func (i ICMP) IsUnreachable() bool {
+	return i.Type == ICMP_UNREACHABLE
+}
+
+func (i ICMP) UnreachableHost() net.IP {
+	if i.Type == ICMP_UNREACHABLE {
+		ipHeader, err := ipv4.ParseHeader(i.Data)
+		if err == nil {
+			return ipHeader.Dst
+		}
+	}
+	return nil
+}
+
+func (i ICMP) Marshal() []byte {
+	var buffer bytes.Buffer
+	binary.Write(&buffer, binary.BigEndian, i.Type)
+	binary.Write(&buffer, binary.BigEndian, i.Code)
+	binary.Write(&buffer, binary.BigEndian, i.Checksum)
+	binary.Write(&buffer, binary.BigEndian, i.RestOfHeader)
+	if len(i.Data) > 0 {
+		binary.Write(&buffer, binary.BigEndian, i.Data)
+	}
+	return buffer.Bytes()
 }
 
 func (icmp ICMP) String() string {
 	msgType := "Unknow"
-	if icmp.Type == 0 {
+	if icmp.Type == ICMP_REPLY {
 		msgType = "Echo Reply"
 	} else if icmp.Type == 3 {
 		msgType = []string{
@@ -97,7 +274,7 @@ func (icmp ICMP) String() string {
 			"Host Precedence Violation",
 			"Precedence cutoff in effect",
 		}[icmp.Code]
-	} else if icmp.Type == 8 {
+	} else if icmp.Type == ICMP_REQUEST {
 		msgType = "Echo Request"
 	} else if icmp.Type == 11 {
 		if icmp.Code == 0 {
@@ -111,13 +288,15 @@ func (icmp ICMP) String() string {
 	return fmt.Sprintf("ICMP type %s", msgType)
 }
 
-func NewICMPHeader(bts []byte) ICMP {
+func NewICMP(bts []byte) ICMP {
 	icmp := ICMP{}
 	buf := bytes.NewBuffer(bts)
 	binary.Read(buf, binary.BigEndian, &icmp.Type)
 	binary.Read(buf, binary.BigEndian, &icmp.Code)
 	binary.Read(buf, binary.BigEndian, &icmp.Checksum)
-	binary.Read(buf, binary.BigEndian, &icmp.Rest)
+	binary.Read(buf, binary.BigEndian, &icmp.RestOfHeader)
+	icmp.Data = make([]byte, buf.Len())
+	binary.Read(buf, binary.BigEndian, &icmp.Data)
 	return icmp
 }
 
@@ -239,31 +418,6 @@ var (
 	host    = flag.String("h", "", "Host to send")
 )
 
-func main() {
-	flag.Parse()
-	if *ifName == "" || *portNum == 0 || *host == "" {
-		flag.PrintDefaults()
-		//os.Exit(1)
-	}
-
-	fd, _ := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_TCF)
-	f := os.NewFile(uintptr(fd), fmt.Sprintf("fd %d", fd))
-	for {
-		buf := make([]byte, 1500)
-		f.Read(buf)
-		ip4header, _ := ipv4.ParseHeader(buf[:20])
-		fmt.Println("ip header:", ip4header)
-
-		tcpheader := NewTCPHeader(buf[20:40])
-		fmt.Println("tcp header: ", tcpheader)
-	}
-	/*
-		addr := ifAddr(*ifName)
-		fmt.Printf("addr %s\n", addr)
-		sendSyn("127.0.0.1", *host, uint16(*portNum))
-	*/
-}
-
 func ifAddr(ifName string) net.Addr {
 	info, err := net.InterfaceByName(ifName)
 	if err != nil {
@@ -317,11 +471,12 @@ func sendSyn(sAddr, dAddr string, port uint16) error {
 	return nil
 }
 
-func SendRaw(p []byte) {
-	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
+func SendRaw(p []byte) error {
+	fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, syscall.ETH_P_ALL)
 	if err != nil {
 		log.Fatal("failed to create raw scoket ", err)
 	}
+	interf, _ := net.InterfaceByName("enp4s0")
 	var addr syscall.SockaddrLinklayer
 	addr.Protocol = syscall.ETH_P_ARP
 	addr.Ifindex = interf.Index
@@ -329,5 +484,61 @@ func SendRaw(p []byte) {
 	err = syscall.Sendto(fd, p, 0, &addr)
 	if err != nil {
 		log.Fatal("Sendto:", err)
+	}
+	return err
+}
+
+func Ping(target [4]byte, timeout time.Duration) bool {
+	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
+	if err != nil {
+		log.Println("failed to create raw socket ", err)
+		return false
+	}
+	icmp := ICMP{Type: ICMP_REQUEST}
+
+	var addr syscall.SockaddrInet4
+	addr.Port = 0
+	addr.Addr = target
+	dst := net.IPv4(target[0], target[1], target[2], target[3])
+	ip := ipv4.Header{Version: 4, Len: 20, TotalLen: 30, TTL: 64, Protocol: 1, Dst: dst}
+	bytes, _ := ip.Marshal()
+	icmp.CalCheckSum()
+	err = syscall.Sendto(fd, append(bytes, icmp.Marshal()...), 0, &addr)
+	if err != nil {
+		log.Fatal("failed to send icmp package")
+		return false
+	}
+	ch := make(chan bool, 1)
+	go CaptureIcmp(dst, timeout, ch)
+	for {
+		select {
+		case ret := <-ch:
+			return ret
+		case <-time.After(timeout):
+			return false
+		}
+	}
+}
+
+func CaptureIcmp(src net.IP, duration time.Duration, ch chan bool) {
+	fd1, _ := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_ICMP)
+	f := os.NewFile(uintptr(fd1), fmt.Sprintf("fd %d", fd1))
+	defer f.Close()
+	buf := make([]byte, 1500)
+	for {
+		f.Read(buf)
+		ip4header, _ := ipv4.ParseHeader(buf)
+		switch ip4header.Protocol {
+		case ICMP_PROTOCOL:
+			icmp := NewICMP(buf[ip4header.Len:])
+			if icmp.IsUnreachable() && icmp.UnreachableHost().Equal(src) {
+				ch <- false
+				return
+			}
+			if ip4header.Src.Equal(src) && icmp.Type == ICMP_REPLY {
+				ch <- true
+				return
+			}
+		}
 	}
 }

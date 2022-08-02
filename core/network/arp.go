@@ -474,7 +474,7 @@ func NewPacket(op Operation, srcHW net.HardwareAddr, srcIP netip.Addr, dstHW net
 		HardwareType: 1,
 
 		// Default to EtherType for IPv4
-		ProtocolType: uint16(EtherTypeIPv4),
+		ProtocolType: uint16(EtherTypeARP),
 
 		// Populate other fields using input data
 		HardwareAddrLength: uint8(len(srcHW)),
@@ -485,6 +485,11 @@ func NewPacket(op Operation, srcHW net.HardwareAddr, srcIP netip.Addr, dstHW net
 		TargetHardwareAddr: dstHW,
 		TargetIP:           dstIP,
 	}, nil
+}
+
+func (p *Packet) Marshal() ([]byte, error) {
+
+	return nil, nil
 }
 
 // MarshalBinary allocates a byte slice containing the data from a Packet.
