@@ -13,135 +13,140 @@ import (
 	"strings"
 	"syscall"
 	"time"
-	"unsafe"
 
 	"golang.org/x/net/ipv4"
 )
 
 /*
+/*
 #include <stdint.h>
 #include <stdlib.h>
 
 typedef struct __attribute__((packed))
-{
-    char dest[6];
-    char sender[6];
-    uint16_t protocolType;
-} EthernetHeader;
+
+	{
+	    char dest[6];
+	    char sender[6];
+	    uint16_t protocolType;
+	} EthernetHeader;
 
 typedef struct __attribute__((packed))
-{
-    uint16_t hwType;
-    uint16_t protoType;
-    char hwLen;
-    char protocolLen;
-    uint16_t oper;
-    char SHA[6];
-    char SPA[4];
-    char THA[6];
-    char TPA[4];
-} ArpPacket;
+
+	{
+	    uint16_t hwType;
+	    uint16_t protoType;
+	    char hwLen;
+	    char protocolLen;
+	    uint16_t oper;
+	    char SHA[6];
+	    char SPA[4];
+	    char THA[6];
+	    char TPA[4];
+	} ArpPacket;
 
 typedef struct __attribute__((packed))
-{
-    EthernetHeader eth;
-    ArpPacket arp;
-} EthernetArpPacket;
+
+	{
+	    EthernetHeader eth;
+	    ArpPacket arp;
+	} EthernetArpPacket;
 
 char* FillRequestPacketFields(char* senderMac, char* senderIp)
-{
-    EthernetArpPacket * packet = malloc(sizeof(EthernetArpPacket));
-    memset(packet, 0, sizeof(EthernetArpPacket));
-    // Ethernet header
-    // Dest = Broadcast (ff:ff:ff:ff:ff)
-    packet->eth.dest[0] = 0xff;
-    packet->eth.dest[1] = 0xff;
-    packet->eth.dest[2] = 0xff;
-    packet->eth.dest[3] = 0xff;
-    packet->eth.dest[4] = 0xff;
-    packet->eth.dest[5] = 0xff;
 
-    packet->eth.sender[0] = strtol(senderMac, NULL, 16); senderMac += 3;
-    packet->eth.sender[1] = strtol(senderMac, NULL, 16); senderMac += 3;
-    packet->eth.sender[2] = strtol(senderMac, NULL, 16); senderMac += 3;
-    packet->eth.sender[3] = strtol(senderMac, NULL, 16); senderMac += 3;
-    packet->eth.sender[4] = strtol(senderMac, NULL, 16); senderMac += 3;
-    packet->eth.sender[5] = strtol(senderMac, NULL, 16);
+	{
+	    EthernetArpPacket * packet = malloc(sizeof(EthernetArpPacket));
+	    memset(packet, 0, sizeof(EthernetArpPacket));
+	    // Ethernet header
+	    // Dest = Broadcast (ff:ff:ff:ff:ff)
+	    packet->eth.dest[0] = 0xff;
+	    packet->eth.dest[1] = 0xff;
+	    packet->eth.dest[2] = 0xff;
+	    packet->eth.dest[3] = 0xff;
+	    packet->eth.dest[4] = 0xff;
+	    packet->eth.dest[5] = 0xff;
 
-    packet->eth.protocolType = htons(0x0806); // ARP
+	    packet->eth.sender[0] = strtol(senderMac, NULL, 16); senderMac += 3;
+	    packet->eth.sender[1] = strtol(senderMac, NULL, 16); senderMac += 3;
+	    packet->eth.sender[2] = strtol(senderMac, NULL, 16); senderMac += 3;
+	    packet->eth.sender[3] = strtol(senderMac, NULL, 16); senderMac += 3;
+	    packet->eth.sender[4] = strtol(senderMac, NULL, 16); senderMac += 3;
+	    packet->eth.sender[5] = strtol(senderMac, NULL, 16);
 
-    // ARP Packet fields
-    packet->arp.hwType = htons(1); // Ethernet
-    packet->arp.protoType = htons(0x800); //IP;
-    packet->arp.hwLen = 6;
-    packet->arp.protocolLen = 4;
-    packet->arp.oper = htons(2); // response
+	    packet->eth.protocolType = htons(0x0806); // ARP
 
-    // Sender MAC (same as that in eth header)
-    memcpy(packet->arp.SHA, packet->eth.sender, 6);
+	    // ARP Packet fields
+	    packet->arp.hwType = htons(1); // Ethernet
+	    packet->arp.protoType = htons(0x800); //IP;
+	    packet->arp.hwLen = 6;
+	    packet->arp.protocolLen = 4;
+	    packet->arp.oper = htons(2); // response
 
-    // Sender IP
-    packet->arp.SPA[0] = strtol(senderIp, NULL, 10); senderIp = strchr(senderIp, '.') + 1;
-    packet->arp.SPA[1] = strtol(senderIp, NULL, 10); senderIp = strchr(senderIp, '.') + 1;
-    packet->arp.SPA[2] = strtol(senderIp, NULL, 10); senderIp = strchr(senderIp, '.') + 1;
-    packet->arp.SPA[3] = strtol(senderIp, NULL, 10);
+	    // Sender MAC (same as that in eth header)
+	    memcpy(packet->arp.SHA, packet->eth.sender, 6);
 
-    // Dest MAC: Same as SHA, as we use an ARP response
-    memcpy(packet->arp.THA, packet->arp.SHA, 6);
+	    // Sender IP
+	    packet->arp.SPA[0] = strtol(senderIp, NULL, 10); senderIp = strchr(senderIp, '.') + 1;
+	    packet->arp.SPA[1] = strtol(senderIp, NULL, 10); senderIp = strchr(senderIp, '.') + 1;
+	    packet->arp.SPA[2] = strtol(senderIp, NULL, 10); senderIp = strchr(senderIp, '.') + 1;
+	    packet->arp.SPA[3] = strtol(senderIp, NULL, 10);
 
-    // Dest IP: Same as SPA
-    memcpy(packet->arp.TPA, packet->arp.SPA, 4);
+	    // Dest MAC: Same as SHA, as we use an ARP response
+	    memcpy(packet->arp.THA, packet->arp.SHA, 6);
 
-    return (char*) packet;
-}
-*/
+	    // Dest IP: Same as SPA
+	    memcpy(packet->arp.TPA, packet->arp.SPA, 4);
+
+	    return (char*) packet;
+	}
+
 import "C"
 
-func SendArp() {
-	etherArp := new(C.EthernetArpPacket)
-	size := uint(unsafe.Sizeof(*etherArp))
-	fmt.Println("Size : ", size)
+	func SendArp1() {
+		etherArp := new(C.EthernetArpPacket)
+		size := uint(unsafe.Sizeof(*etherArp))
+		fmt.Println("Size : ", size)
 
-	fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, syscall.ETH_P_ALL)
-	if err != nil {
-		fmt.Println("Error: " + err.Error())
-		return
-	}
-	fmt.Println("Obtained fd ", fd)
-	defer syscall.Close(fd)
+		fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, syscall.ETH_P_ALL)
+		if err != nil {
+			fmt.Println("Error: " + err.Error())
+			return
+		}
+		fmt.Println("Obtained fd ", fd)
+		defer syscall.Close(fd)
 
-	// Get Mac address of vboxnet1
-	interf, err := net.InterfaceByName("enp4s0")
-	if err != nil {
-		fmt.Println("Could not find vboxnet interface")
-		return
-	}
+		// Get Mac address of vboxnet1
+		interf, err := net.InterfaceByName("enp4s0")
+		if err != nil {
+			fmt.Println("Could not find vboxnet interface")
+			return
+		}
 
-	fmt.Println("Interface hw address: ", interf.HardwareAddr)
-	fmt.Println("Creating request for IP 10.10.10.2 from IP 10.10.10.1")
+		fmt.Println("Interface hw address: ", interf.HardwareAddr)
+		fmt.Println("Creating request for IP 10.10.10.2 from IP 10.10.10.1")
 
-	iface_cstr := C.CString(interf.HardwareAddr.String())
-	ip_cstr := C.CString("10.10.10.5")
+		iface_cstr := C.CString(interf.HardwareAddr.String())
+		ip_cstr := C.CString("10.10.10.5")
 
-	packet := C.GoBytes(unsafe.Pointer(C.FillRequestPacketFields(iface_cstr, ip_cstr)), C.int(size))
+		packet := C.GoBytes(unsafe.Pointer(C.FillRequestPacketFields(iface_cstr, ip_cstr)), C.int(size))
 
-	// Send the packet
-	var addr syscall.SockaddrLinklayer
-	addr.Protocol = syscall.ETH_P_ARP
-	addr.Ifindex = interf.Index
-	addr.Hatype = syscall.ARPHRD_ETHER
+		// Send the packet
+		var addr syscall.SockaddrLinklayer
+		addr.Protocol = syscall.ETH_P_ARP
+		addr.Ifindex = interf.Index
+		addr.Hatype = syscall.ARPHRD_ETHER
 
-	//err = syscall.Sendto(fd, packet, 0, &addr)
-	err = SendRaw(packet)
+		//err = syscall.Sendto(fd, packet, 0, &addr)
+		ifc, _ := MainInterface()
+		err = SendRaw(packet, ifc.Name)
 
-	if err != nil {
-		fmt.Println("Error: ", err)
-	} else {
-		fmt.Println("Sent packet")
-	}
+		if err != nil {
+			fmt.Println("Error: ", err)
+		} else {
+			fmt.Println("Sent packet")
+		}
 
 }
-
+*/
 const (
 	ICMP_PROTOCOL = 1
 	IGMP_PROTOCOL = 2
@@ -471,12 +476,12 @@ func sendSyn(sAddr, dAddr string, port uint16) error {
 	return nil
 }
 
-func SendRaw(p []byte) error {
+func SendRaw(p []byte, ifcName string) error {
 	fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, syscall.ETH_P_ALL)
 	if err != nil {
 		log.Fatal("failed to create raw scoket ", err)
 	}
-	interf, _ := net.InterfaceByName("enp4s0")
+	interf, _ := net.InterfaceByName(ifcName)
 	var addr syscall.SockaddrLinklayer
 	addr.Protocol = syscall.ETH_P_ARP
 	addr.Ifindex = interf.Index
@@ -505,7 +510,7 @@ func Ping(target [4]byte, timeout time.Duration) bool {
 	icmp.CalCheckSum()
 	err = syscall.Sendto(fd, append(bytes, icmp.Marshal()...), 0, &addr)
 	if err != nil {
-		log.Fatal("failed to send icmp package")
+		log.Println("failed to send icmp package to host " + ip.String() + err.Error())
 		return false
 	}
 	ch := make(chan bool, 1)

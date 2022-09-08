@@ -1,15 +1,41 @@
 package network
 
 import (
+	"errors"
 	"net"
 	"sync"
 	"time"
 
 	"github.com/shooyaaa/log"
+	"golang.org/x/exp/slices"
 )
 
 func Interfaces() ([]net.Interface, error) {
 	return net.Interfaces()
+}
+
+func MainInterface() (*net.Interface, error) {
+	ifc, _ := net.Interfaces()
+	for _, ic := range ifc {
+		addrs, _ := ic.Addrs()
+		for _, addr := range addrs {
+			ipNet, _ := addr.(*net.IPNet)
+			ip := ipNet.IP
+			if !ip.IsLoopback() && ip.IsPrivate() {
+				return &ic, nil
+			}
+
+		}
+	}
+	return nil, errors.New("no main interface found")
+}
+
+func MainMacAddr() (*net.HardwareAddr, error) {
+	ifc, err := MainInterface()
+	if err != nil {
+		return nil, err
+	}
+	return &ifc.HardwareAddr, nil
 }
 
 func AllHostsOfInterface(ifcName string) ([]net.IP, error) {
@@ -52,8 +78,26 @@ func AllHostsOfInterface(ifcName string) ([]net.IP, error) {
 	return nil, nil
 }
 
-func ScanHosts(ifcName string) []net.IP {
-	hosts, _ := AllHostsOfInterface("enp4s0")
+var hosts []net.IP
+
+func MonitorHosts(ifcName string) {
+	if hosts == nil {
+		hosts = make([]net.IP, 0)
+	}
+	ifc, _ := MainInterface()
+	ips := _scanHosts(ifc.Name)
+	for _, ip := range ips {
+		idx := slices.IndexFunc(hosts, func(c net.IP) bool {
+			return ip.String() == c.String()
+		})
+
+		if idx == -1 {
+			log.DebugF("New host %v", ip)
+		}
+	}
+}
+func _scanHosts(ifcName string) []net.IP {
+	hosts, _ := AllHostsOfInterface(ifcName)
 	var wg sync.WaitGroup
 	lives := []net.IP{}
 	for _, h := range hosts {
@@ -64,7 +108,7 @@ func ScanHosts(ifcName string) []net.IP {
 				lives = append(lives, host)
 				log.DebugF("host %s is up\n", host)
 			} else {
-				log.DebugF("host %s is down\n", host)
+				//log.DebugF("host %s is down\n", host)
 			}
 		}(h)
 	}

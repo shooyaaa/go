@@ -13,7 +13,7 @@ type Cron struct {
 func (c Cron) Run() Module {
 	telegram := utils.Telegram{}
 
-	cron := GlobalTicker.Cron(10, telegram.Cron)
+	cron := GlobalTicker.Cron(1800, telegram.Cron)
 	cron.AddLimitation(HourUnit, Op_Bigger, 9)
 	//cron.AddLimitation(HourUnit, Op_Smaller, 16)
 	cron.AddLimitation(DayUnit, Op_Bigger, 0)
