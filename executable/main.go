@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net"
 	"os"
 	"os/signal"
 
@@ -15,13 +14,6 @@ import (
 )
 
 func main() {
-	ifc, _ := network2.MainInterface()
-	hosts := network2.ScanHosts(ifc.Name)
-	fmt.Println("hosts ", hosts)
-	for _, h := range hosts {
-		fmt.Println(net.LookupAddr(h.String()))
-	}
-
 	ws := network2.Ws{
 		Id:        &types2.Simple{},
 		HeartBeat: 40000000000,

@@ -2,13 +2,14 @@ package utils
 
 import (
 	"fmt"
-	"github.com/shooyaaa/log"
 	"math"
 	"net/http"
 	"os"
 	"sort"
 	"strconv"
 	"time"
+
+	"github.com/shooyaaa/log"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/shooyaaa/config"

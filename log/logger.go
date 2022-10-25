@@ -14,33 +14,33 @@ func Debug(msg string) {
 	fmt.Print(formatMsg(msg))
 }
 func DebugF(format string, values ...interface{}) {
-	fmt.Printf(formatMsg(format), values)
+	fmt.Printf(formatMsg(format), values...)
 }
 
 func Warn(format string, values ...interface{}) {
-	fmt.Printf(formatMsg(format), values)
+	fmt.Printf(formatMsg(format), values...)
 }
 func WarnF(format string, values ...interface{}) {
-	fmt.Printf(formatMsg(format), values)
+	fmt.Printf(formatMsg(format), values...)
 }
 
 func Fatal(format string, values ...interface{}) {
 	fmt.Printf(formatMsg(format), values)
 }
 func FatalF(format string, values ...interface{}) {
-	fmt.Printf(formatMsg(format), values)
+	fmt.Printf(formatMsg(format), values...)
 }
 
 func Info(format string, values ...interface{}) {
-	fmt.Printf(formatMsg(format), values)
+	fmt.Printf(formatMsg(format), values...)
 }
 func InfoF(format string, values ...interface{}) {
-	fmt.Printf(formatMsg(format), values)
+	fmt.Printf(formatMsg(format), values...)
 }
 
-func Error(format string, values ...interface{}) {
-	fmt.Println(format, values)
+func Error(format string) {
+	fmt.Println(format)
 }
 func ErrorF(format string, values ...interface{}) {
-	fmt.Println(format, values)
+	fmt.Printf(format, values...)
 }
