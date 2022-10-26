@@ -481,6 +481,7 @@ func SendRaw(p []byte, ifcName string) error {
 	if err != nil {
 		log.Fatal("failed to create raw scoket ", err)
 	}
+	defer syscall.Close(fd)
 	interf, _ := net.InterfaceByName(ifcName)
 	var addr syscall.SockaddrLinklayer
 	addr.Protocol = syscall.ETH_P_ARP
@@ -499,6 +500,7 @@ func Ping(target [4]byte, timeout time.Duration) bool {
 		log.Println("failed to create raw socket ", err)
 		return false
 	}
+	defer syscall.Close(fd)
 	icmp := ICMP{Type: ICMP_REQUEST}
 
 	var addr syscall.SockaddrInet4

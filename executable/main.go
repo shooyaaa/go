@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 
@@ -28,6 +30,7 @@ func main() {
 	library.ModuleManager.Load(cron.Run())
 	go library.ModuleManager.Run()
 	ch := make(chan os.Signal, 1)
+	log.Info(http.ListenAndServe("localhost:6060", nil).Error())
 	signal.Notify(ch, os.Interrupt, os.Kill)
 	s := <-ch
 	fmt.Println("signal caught", s)
