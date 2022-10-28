@@ -3,21 +3,20 @@ package session
 import (
 	"bytes"
 	"errors"
-	codec2 "github.com/shooyaaa/core/codec"
-	"github.com/shooyaaa/core/op"
-	"github.com/shooyaaa/log"
 	"io"
 	"sync"
+
+	"github.com/shooyaaa/log"
 )
 
 type Owner interface {
-	OpHandler(op.Op, *Session)
+	OpHandler(Op, *Session)
 	SessionClose(int64)
 }
 
-var codec codec2.Codec
+var codec Codec
 
-func SetCodec(c codec2.Codec) {
+func SetCodec(c Codec) {
 	codec = c
 }
 
@@ -28,34 +27,32 @@ type Session struct {
 	buffer *bytes.Buffer
 }
 
-func (s *Session) WriteWithCodec(msg []op.Op, c codec2.Codec) (int, error) {
+func (s *Session) WriteWithCodec(msg Op, c Codec) (int, error) {
 	buffer, _ := c.Encode(msg)
 	s.Conn.Write(buffer)
 	return 0, nil
 }
 
-func (s *Session) ReadWithCodec(c codec2.Codec) ([]op.Op, error) {
+func (s *Session) ReadWithCodec(c Codec) (*Op, error) {
 	buffer := make([]byte, 1024)
 	count, err := s.Conn.Read(buffer)
 	if err != nil {
 		return nil, err
 	}
 	s.buffer.Write(buffer[0:count])
-	ops := make([]op.Op, 0)
-	i, reduced, err := c.Decode(s.buffer.Bytes())
-	ops = i.([]op.Op)
+	op, reduced, err := c.Decode(s.buffer.Bytes())
 	s.buffer.Next(reduced)
-	return ops, err
+	return op, err
 }
 
-func (s *Session) Write(msg []op.Op) (int, error) {
+func (s *Session) Write(msg Op) (int, error) {
 	if codec == nil {
 		return -1, errors.New("Default codec should setted")
 	}
 	return s.WriteWithCodec(msg, codec)
 }
 
-func (s *Session) Read() ([]op.Op, error) {
+func (s *Session) Read() (*Op, error) {
 	if codec == nil {
 		return nil, errors.New("Default codec should setted")
 	}
@@ -71,18 +68,16 @@ func (s *Session) SetOwner(o Owner) {
 				s.buffer = &bytes.Buffer{}
 			}
 			log.DebugF("read from session %d", s.Id)
-			ops, err := s.Read()
+			op, err := s.Read()
 			if err != nil {
-				log.ErrorF("error while read from session: %v", err)
+				log.InfoF("error while read from session: %v", err)
 				if err == io.EOF {
 					log.ErrorF("session end reason %v", err)
 					s.owner.SessionClose(s.Id)
 					break
 				}
 			} else {
-				for _, op := range ops {
-					s.owner.OpHandler(op, s)
-				}
+				s.owner.OpHandler(*op, s)
 			}
 		}
 	})

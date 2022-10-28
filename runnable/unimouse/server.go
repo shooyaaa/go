@@ -3,8 +3,8 @@ package unimouse
 import (
 	"fmt"
 
+	hook "github.com/robotn/gohook"
 	"github.com/shooyaaa/core/network"
-	"github.com/shooyaaa/core/op"
 	"github.com/shooyaaa/core/session"
 
 	. "github.com/shooyaaa/core/types"
@@ -13,21 +13,39 @@ import (
 func Run() {
 	tcp := network.Tcp{Id: &Simple{}}
 	tcp.Listen(":9994")
+	session.SetCodec(&session.Json{})
+	handler := Handler{}
+	handler.Manager.Init()
+	go startHook(handler)
 	for {
-		handler := Handler{}
-		session := tcp.Accept()
-		session.SetOwner(handler)
-		handler.clients[session.Id] = session
+		s := tcp.Accept()
+		s.SetOwner(handler)
+		handler.Manager.Add(*s)
 	}
 }
 
-type Handler struct {
-	clients map[int64]*session.Session
+func startHook(h Handler) {
+	hook.Register(hook.MouseMove, []string{}, func(e hook.Event) {
+
+	})
+	hook.Register(hook.KeyUp, []string{}, func(e hook.Event) {
+		fmt.Println(e)
+		o := session.MakeOp(session.Op_KeyEvent, map[string]interface{}{
+			"RawCode": e.Rawcode, "Keychar": e.Keychar,
+		})
+		h.Manager.Broadcast(o)
+	})
+	s := hook.Start()
+	<-hook.Process(s)
 }
 
-func (h Handler) OpHandler(op op.Op, s *session.Session) {
+type Handler struct {
+	session.Manager
+}
+
+func (h Handler) OpHandler(op session.Op, s *session.Session) {
 	fmt.Println("op comes ", op, " session ", s)
 }
 func (h Handler) SessionClose(id int64) {
-	delete(h.clients, id)
+	h.Manager.RemoveId(id)
 }

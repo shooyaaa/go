@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	. "github.com/shooyaaa/core/network"
-	"github.com/shooyaaa/core/op"
 	"github.com/shooyaaa/core/session"
 	"github.com/shooyaaa/log"
 )
@@ -23,7 +22,7 @@ func Connect() {
 type ClientHandler struct {
 }
 
-func (c ClientHandler) OpHandler(op op.Op, s *session.Session) {
+func (c ClientHandler) OpHandler(op session.Op, s *session.Session) {
 	fmt.Println("op comes ", op, " session ", s)
 }
 func (c ClientHandler) SessionClose(id int64) {

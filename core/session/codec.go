@@ -1,4 +1,4 @@
-package codec
+package session
 
 type CODEC_TYPE uint8
 
@@ -7,8 +7,8 @@ const (
 )
 
 type Codec interface {
-	Encode(interface{}) ([]byte, error)
-	Decode([]byte) (interface{}, int, error)
+	Encode(Op) ([]byte, error)
+	Decode([]byte) (*Op, int, error)
 }
 
 func GetCodec(codec CODEC_TYPE) Codec {
