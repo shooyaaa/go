@@ -477,21 +477,24 @@ func sendSyn(sAddr, dAddr string, port uint16) error {
 }
 
 func SendRaw(p []byte, ifcName string) error {
-	fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, syscall.ETH_P_ALL)
-	if err != nil {
-		log.Fatal("failed to create raw scoket ", err)
-	}
-	defer syscall.Close(fd)
-	interf, _ := net.InterfaceByName(ifcName)
-	var addr syscall.SockaddrLinklayer
-	addr.Protocol = syscall.ETH_P_ARP
-	addr.Ifindex = interf.Index
-	addr.Hatype = syscall.ARPHRD_ETHER
-	err = syscall.Sendto(fd, p, 0, &addr)
-	if err != nil {
-		log.Fatal("Sendto:", err)
-	}
-	return err
+	/*
+		fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, syscall.ETH_P_ALL)
+		if err != nil {
+			log.Fatal("failed to create raw scoket ", err)
+		}
+		defer syscall.Close(fd)
+		interf, _ := net.InterfaceByName(ifcName)
+		var addr syscall.SockaddrLinklayer
+		addr.Protocol = syscall.ETH_P_ARP
+		addr.Ifindex = interf.Index
+		addr.Hatype = syscall.ARPHRD_ETHER
+		err = syscall.Sendto(fd, p, 0, &addr)
+		if err != nil {
+			log.Fatal("Sendto:", err)
+		}
+		return err
+	*/
+	return nil
 }
 
 func Ping(target [4]byte, timeout time.Duration) bool {

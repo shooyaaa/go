@@ -2,12 +2,13 @@ package network
 
 import (
 	"fmt"
-	"github.com/shooyaaa/core/session"
-	"github.com/shooyaaa/core/types"
-	log2 "github.com/shooyaaa/log"
 	"log"
 	"net"
 	"time"
+
+	"github.com/shooyaaa/core/session"
+	"github.com/shooyaaa/core/types"
+	log2 "github.com/shooyaaa/log"
 )
 
 type Tcp struct {
@@ -25,13 +26,17 @@ func (tc TcpConn) Read() ([]byte, error) {
 	_, err := tc.conn.Read(bytes)
 	return bytes, err
 }
-func (tc *TcpConn) Dial(host string, port int) error {
+func (tc *TcpConn) Dial(host string, port int) (*session.Session, error) {
 	conn, err := net.Dial("tcp", fmt.Sprintf("%v:%v", host, port))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	tc.conn = conn
-	return nil
+	session := session.Session{
+		Id:   -1,
+		Conn: conn,
+	}
+	return &session, nil
 }
 
 func (tc TcpConn) Write(bytes []byte) (int, error) {
