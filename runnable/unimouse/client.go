@@ -20,7 +20,7 @@ func Connect() {
 		return
 	}
 	session.SetCodec(&session.Json{})
-	handler := Handler{}
+	handler := ClientHandler{}
 	s.SetOwner(handler)
 	ch := make(chan os.Signal, 1)
 	log.Info(http.ListenAndServe("localhost:6060", nil).Error())
@@ -37,9 +37,9 @@ func (c ClientHandler) OpHandler(op session.Op, s *session.Session) {
 	case session.Op_KeyEvent:
 		log.DebugF("print key %v ", op.Data["KeyChar"])
 	case session.Op_MouseEvent:
-		x, _ := op.Data["X"]
-		y, _ := op.Data["Y"]
-		robotgo.Move(x.(int), y.(int))
+		x := op.Data["X"]
+		y := op.Data["Y"]
+		robotgo.Move(int(x.(float64)), int(y.(float64)))
 	}
 }
 func (c ClientHandler) SessionClose(id int64) {

@@ -46,7 +46,7 @@ type Handler struct {
 }
 
 func (h Handler) OpHandler(op session.Op, s *session.Session) {
-	fmt.Println("op comes ", op, " session ", s)
+	fmt.Println("server op comes ", op, " session ", s)
 }
 func (h Handler) SessionClose(id int64) {
 	h.Manager.RemoveId(id)
