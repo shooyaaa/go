@@ -17,6 +17,7 @@ func Connect() {
 	s, err := tcp.Dial("10.1.36.39", 9994)
 	if err != nil {
 		log.Fatal("error occurs while connect to server %v", err)
+		return
 	}
 	session.SetCodec(&codec.Json{})
 	handler := Handler{}

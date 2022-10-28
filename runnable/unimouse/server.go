@@ -26,10 +26,12 @@ func Run() {
 
 func startHook(h Handler) {
 	hook.Register(hook.MouseMove, []string{}, func(e hook.Event) {
-
+		o := session.MakeOp(session.Op_MouseEvent, map[string]interface{}{
+			"X": e.X, "Y": e.Y,
+		})
+		h.Manager.Broadcast(o)
 	})
 	hook.Register(hook.KeyUp, []string{}, func(e hook.Event) {
-		fmt.Println(e)
 		o := session.MakeOp(session.Op_KeyEvent, map[string]interface{}{
 			"RawCode": e.Rawcode, "Keychar": e.Keychar,
 		})
