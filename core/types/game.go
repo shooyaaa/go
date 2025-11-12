@@ -1,7 +1,7 @@
 package types
 
-import "github.com/shooyaaa/core/session"
+import "github.com/shooyaaa/core/codec"
 
 type Game interface {
-	Play([]session.Op)
+	Play([]codec.Op)
 }

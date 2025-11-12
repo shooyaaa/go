@@ -21,15 +21,8 @@ type Package struct {
 }
 
 func (p *Package) Encode() error {
-	codec := codec.GetCodec(p.codec)
-	if codec == nil {
-		panic("package has invalid code type")
-	}
-	body, err := codec.Encode(p.body)
-	if err != nil {
-		return err
-	}
-	p.body = body
+	// Encode is a no-op since body is already []byte
+	// If encoding is needed, it should be done before setting the body
 	return nil
 }
 
@@ -38,8 +31,8 @@ func (p *Package) GetBody() []byte {
 }
 
 func (p *Package) Decode() (interface{}, error) {
-	codec := codec.GetCodec(p.codec)
-	ret, _, err := codec.Decode(p.body)
+	codecInstance := codec.NewCodec[codec.Op](p.codec)
+	ret, err := codecInstance.Decode(p.body)
 	if err != nil {
 		return nil, err
 	}

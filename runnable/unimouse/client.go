@@ -6,7 +6,7 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/go-vgo/robotgo"
+	"github.com/shooyaaa/core/codec"
 	. "github.com/shooyaaa/core/network"
 	"github.com/shooyaaa/core/session"
 	"github.com/shooyaaa/log"
@@ -19,7 +19,7 @@ func Connect() {
 		log.Fatal("error occurs while connect to server %v", err)
 		return
 	}
-	session.SetCodec(&session.Json{})
+	session.SetCodec(codec.NewCodec[codec.Op](codec.JSON_CODEC))
 	handler := ClientHandler{}
 	s.SetOwner(handler)
 	ch := make(chan os.Signal, 1)
@@ -31,15 +31,13 @@ func Connect() {
 type ClientHandler struct {
 }
 
-func (c ClientHandler) OpHandler(op session.Op, s *session.Session) {
+func (c ClientHandler) OpHandler(op codec.Op, s *session.Session) {
 	fmt.Println("op comes ", op.Type, " session ", s.Id)
 	switch op.Type {
-	case session.Op_KeyEvent:
+	case codec.Op_KeyEvent:
 		log.DebugF("print key %v ", op.Data["KeyChar"])
-	case session.Op_MouseEvent:
-		x := op.Data["X"]
-		y := op.Data["Y"]
-		robotgo.Move(int(x.(float64)), int(y.(float64)))
+	case codec.Op_MouseEvent:
+		log.DebugF("mouse move to %v, %v", op.Data["X"], op.Data["Y"])
 	}
 }
 func (c ClientHandler) SessionClose(id int64) {

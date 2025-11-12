@@ -7,7 +7,9 @@ import (
 
 func main() {
 	r := registry.NewRegistry()
-	r.Listen(config.RegistryRedisAddress)
+	if len(config.RegistryRedisAddress) > 0 {
+		r.Listen(config.RegistryRedisAddress[0])
+	}
 	r.Accept()
 
 	defer r.Close()

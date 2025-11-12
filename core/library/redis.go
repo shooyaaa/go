@@ -2,22 +2,23 @@ package library
 
 import (
 	"context"
-	. "github.com/go-redis/redis/v8"
 	"time"
+
+	"github.com/go-redis/redis/v8"
 )
 
 type Redis struct {
-	rdb UniversalClient
+	rdb redis.UniversalClient
 }
 
-func (r Redis) Init(params map[string]interface{}) {
-	options := UniversalOptions{}
+func (r *Redis) Init(params map[string]interface{}) {
+	options := redis.UniversalOptions{}
 	options.Addrs = params["address"].([]string)
 	master, ok := params["master"].(string)
 	if ok {
 		options.MasterName = master
 	}
-	r.rdb = NewUniversalClient(&options)
+	r.rdb = redis.NewUniversalClient(&options)
 }
 
 func (r Redis) GetString(key string) string {
@@ -32,7 +33,7 @@ func (r Redis) GetInt64(key string) (int64, error) {
 	return r.Get(key).Int64()
 }
 
-func (r Redis) Get(key string) *StringCmd {
+func (r Redis) Get(key string) *redis.StringCmd {
 	ctx := context.Background()
 	return r.rdb.Get(ctx, key)
 }

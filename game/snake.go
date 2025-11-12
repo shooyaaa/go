@@ -1,7 +1,7 @@
 package game
 
 import (
-	"github.com/shooyaaa/core/op"
+	"github.com/shooyaaa/core/codec"
 	"github.com/shooyaaa/core/types"
 )
 
@@ -18,7 +18,7 @@ type SnakeData struct {
 	types.Player
 }
 
-func (s Snake) Play(ops []op.OpWithSession) {
+func (s Snake) Play(ops []codec.Op) {
 	for _, _ = range ops {
 
 	}

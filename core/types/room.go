@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/shooyaaa/core/codec"
 	"github.com/shooyaaa/core/session"
 	"github.com/shooyaaa/log"
 )
@@ -12,11 +13,11 @@ type Room struct {
 	members   map[*session.Session]*Player
 	MaxMember int16
 	ticker    *time.Ticker
-	MsgChan   chan session.Op
+	MsgChan   chan codec.Op
 	GameType  Game
 	Interval  uint16
 	FrameTime int64
-	msgBuffer []session.Op
+	msgBuffer []codec.Op
 }
 
 func (r *Room) Init() {
@@ -27,13 +28,13 @@ func (r *Room) Init() {
 	if r.MaxMember == 0 {
 		r.MaxMember = 2000
 	}
-	r.MsgChan = make(chan session.Op, 100)
+	r.MsgChan = make(chan codec.Op, 100)
 	r.members = make(map[*session.Session]*Player)
 	go r.Tick()
 }
 
 func (r *Room) resetMsgChan() {
-	r.msgBuffer = make([]session.Op, 100)
+	r.msgBuffer = make([]codec.Op, 100)
 }
 
 func (r *Room) Add(s *session.Session) error {
@@ -45,15 +46,15 @@ func (r *Room) Add(s *session.Session) error {
 	s.SetOwner(r)
 	return nil
 }
-func (r *Room) OpHandler(op session.Op, session *session.Session) {
+func (r *Room) OpHandler(op codec.Op, session *session.Session) {
 	r.MsgChan <- op
 }
 
-func (r *Room) OpHandler1(op1 session.Op, s *session.Session) {
+func (r *Room) OpHandler1(op1 codec.Op, s *session.Session) {
 	switch op1.Type {
-	case session.Op_Logout:
+	case codec.Op_Logout:
 		delete(r.members, s)
-	case session.Op_Sync_Data:
+	case codec.Op_Sync_Data:
 		gameData := r.members[s]
 		x, ok := op1.Data["x"]
 		if ok {

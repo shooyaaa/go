@@ -1,9 +1,9 @@
 package network
 
 import (
-	"github.com/shooyaaa/core/session"
-	types2 "github.com/shooyaaa/core/types"
 	"testing"
+
+	types2 "github.com/shooyaaa/core/types"
 )
 
 func TestMain(m *testing.M) {
@@ -12,7 +12,6 @@ func TestMain(m *testing.M) {
 	uuid = &simple
 	tcp := Tcp{
 		Id:        uuid,
-		Sessions:  make(map[int64]session.Session),
 		HeartBeat: 5,
 	}
 	tcp.Listen("127.0.0.1:3333")
