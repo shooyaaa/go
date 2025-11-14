@@ -73,11 +73,18 @@ type HttpChannel struct {
 	client HttpChannelClient
 }
 
-func (c *HttpChannel) Send(ctx context.Context, data []byte) error {
+func (c *HttpChannel) Send(ctx context.Context, data []byte) *core.CoreError {
 	return nil
 }
 
-func (c *HttpChannel) Receive(ctx context.Context) ([]byte, error) {
+func (c *HttpChannel) Receive(ctx context.Context) ([]byte, *core.CoreError) {
+	if c.client != nil {
+		data, err := c.client.Receive(ctx)
+		if err != nil {
+			return nil, core.NewCoreError(core.ERROR_CODE_MAILBOX_RECEIVE_ERROR, err.Error())
+		}
+		return data, nil
+	}
 	return nil, nil
 }
 

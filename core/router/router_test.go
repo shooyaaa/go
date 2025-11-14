@@ -2,7 +2,6 @@ package router
 
 import (
 	"fmt"
-	"github.com/shooyaaa/core"
 	"testing"
 )
 
@@ -17,8 +16,11 @@ func TestTcpRouter_Deliver(t *testing.T) {
 		body:   []byte("hello world"),
 	}
 	r, err := LookUp("0:xiaocui")
-	if err.Error() != core.NOT_FOUND {
-		t.Fatalf("err not correct: %v", err.Error())
+	if err == nil {
+		t.Fatalf("expected error but got nil")
+	}
+	if err.Error() != "not found" {
+		t.Fatalf("err not correct: %v", err)
 	}
 	if r != nil {
 		t.Fatalf("router shoulde be nil %v", r)

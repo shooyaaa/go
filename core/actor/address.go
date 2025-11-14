@@ -25,7 +25,8 @@ type LocalPostManAddress struct {
 }
 
 func (a *LocalPostManAddress) String() string {
-	return fmt.Sprintf("%s:%s", AddressType_LOCAL, a.postman.ID())
+	id := a.postman.ID()
+	return fmt.Sprintf("%s:%s", AddressType_LOCAL, (&id).String())
 }
 
 func (a *LocalPostManAddress) ID() uuid.UUID {
@@ -36,24 +37,41 @@ func (a *LocalPostManAddress) Transfer(ctx context.Context, mail Mail[any]) *cor
 	return a.postman.Receive(ctx, mail)
 }
 
+func NewLocalPostManAddress(postman Postman) Address {
+	return &LocalPostManAddress{postman: postman}
+}
+
 type LocalPostOfficeAddress struct {
 	postoffice Postoffice
 }
 
 func (a *LocalPostOfficeAddress) String() string {
-	return fmt.Sprintf("%s:%s", AddressType_LOCAL, a.postoffice.ID())
+	id := a.postoffice.ID()
+	return fmt.Sprintf("%s:%s", AddressType_LOCAL, (&id).String())
 }
 
 func (a *LocalPostOfficeAddress) ID() uuid.UUID {
 	return a.postoffice.ID()
 }
 
+func (a *LocalPostOfficeAddress) Transfer(ctx context.Context, mail Mail[any]) *core.CoreError {
+	return a.postoffice.Dispatch(ctx, mail)
+}
+func NewLocalPostOfficeAddress(postoffice Postoffice) Address {
+	return &LocalPostOfficeAddress{postoffice: postoffice}
+}
+
 type RemoteAddress struct {
 	address RpcAddress
+	id      uuid.UUID
 }
 
 func (a *RemoteAddress) String() string {
 	return fmt.Sprintf("%s:%s", AddressType_REMOTE, a.address.String())
+}
+
+func (a *RemoteAddress) ID() uuid.UUID {
+	return a.id
 }
 
 func (a *RemoteAddress) Transfer(ctx context.Context, mail Mail[any]) *core.CoreError {
@@ -66,6 +84,6 @@ func (a *RemoteAddress) Transfer(ctx context.Context, mail Mail[any]) *core.Core
 	return channel.Send(ctx, buff)
 }
 
-func NewRemoteAddress(address RpcAddress) Address {
-	return &RemoteAddress{address: address}
+func NewRemoteAddress(address RpcAddress, id uuid.UUID) Address {
+	return &RemoteAddress{address: address, id: id}
 }

@@ -2,7 +2,7 @@ package router
 
 import (
 	"errors"
-	"github.com/shooyaaa/core"
+
 	"github.com/shooyaaa/core/storage"
 )
 
@@ -19,7 +19,7 @@ func (dr *DummyRegistry) Get(id string) (chan *Package, error) {
 	if ok {
 		return entry, nil
 	}
-	return nil, errors.New(core.NOT_FOUND)
+	return nil, errors.New("not found")
 }
 
 func (dr *DummyRegistry) Set(id string, p chan *Package) error {
@@ -35,11 +35,14 @@ type TcpRegistry struct {
 }
 
 func (tr *TcpRegistry) Get(id string) (string, error) {
+	if tr.tables == nil {
+		return "", errors.New("not found")
+	}
 	entry := tr.tables.GetString(id)
 	if len(entry) > 0 {
 		return entry, nil
 	}
-	return "", errors.New(core.NOT_FOUND)
+	return "", errors.New("not found")
 }
 
 func (tr *TcpRegistry) Set(id string, value string) error {

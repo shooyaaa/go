@@ -22,8 +22,9 @@ type Postman interface {
 }
 
 type postmanImpl struct {
-	actors sync.Map
-	id     uuid.UUID
+	actors     sync.Map
+	id         uuid.UUID
+	postoffice Address
 }
 
 func NewPostman() Postman {
@@ -74,18 +75,15 @@ func (m *postmanImpl) Deliver(ctx context.Context, mail Mail[any]) *core.CoreErr
 }
 
 func (m *postmanImpl) Register(ctx context.Context, pa Address) *core.CoreError {
-	err := pa.Transfer(ctx, NewMail[any](m.id, pa.ID(), m, codec.JSON_CODEC))
-	if err != nil {
-		return core.NewCoreError(core.ERROR_CODE_ADDRESS_NOT_SUPPORTED, err.String())
-	}
-	return nil
+	m.postoffice = pa
+	return pa.Transfer(ctx, NewMail[any](m.id, pa.ID(), nil, codec.JSON_CODEC))
 }
 
 func (m *postmanImpl) Dispatch(ctx context.Context, mail Mail[any]) *core.CoreError {
 	if m.postoffice == nil {
 		return core.NewCoreError(core.ERROR_CODE_POSTOFFICE_NOT_REGISTERED, "postoffice not registered")
 	}
-	return m.postoffice.Dispatch(ctx, mail)
+	return m.postoffice.Transfer(ctx, mail)
 }
 
 func (m *postmanImpl) Remove(ctx context.Context, id uuid.UUID) *core.CoreError {

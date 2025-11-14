@@ -38,14 +38,22 @@ func Logout() codec.Op {
 func TestServer(t *testing.T) {
 	c, err := net.Dial("tcp", "127.0.0.1:3352")
 	if err != nil {
-		t.Error("error while connect to server")
+		// 如果服务器没有运行，跳过测试
+		t.Skipf("server not running, skipping test: %v", err)
+		return
 	}
+	defer c.Close()
+
 	codecInstance := codec.NewCodec[codec.Op](codec.JSON_CODEC)
 	sd := SyncData()
 	sd.Data = map[string]interface{}{"X": 1.4, "Y": 1.5}
 	b, err := codecInstance.Encode(codec.Op{Type: codec.Op_Sync_Data, Data: map[string]interface{}{"X": 1.4, "Y": 1.5}})
 	if err != nil {
 		t.Error("error while encode op")
+		return
 	}
-	c.Write(b)
+	_, err = c.Write(b)
+	if err != nil {
+		t.Error("error while write to connection")
+	}
 }

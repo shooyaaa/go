@@ -16,11 +16,16 @@ type Postoffice interface {
 }
 
 type postofficeImpl struct {
-	h library.ConsistentHash[Address]
+	h  library.ConsistentHash[Address]
+	id uuid.UUID
 }
 
-func NewPostoffice(h library.ConsistentHash[Address]) Postoffice {
-	return &postofficeImpl{h: h}
+func (p *postofficeImpl) ID() uuid.UUID {
+	return p.id
+}
+
+func NewPostoffice(h library.ConsistentHash[Address], id uuid.UUID) Postoffice {
+	return &postofficeImpl{h: h, id: id}
 }
 
 func (p *postofficeImpl) Add(ctx context.Context, a Address) *core.CoreError {
