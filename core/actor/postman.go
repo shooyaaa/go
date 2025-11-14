@@ -6,57 +6,9 @@ import (
 	"sync"
 
 	"github.com/shooyaaa/core"
-	"github.com/shooyaaa/core/codec"
 	"github.com/shooyaaa/core/uuid"
 	"github.com/shooyaaa/log"
 )
-
-type PostManAddressType string
-
-const PostManAddressType_LOCAL PostManAddressType = "local"
-const PostManAddressType_REMOTE PostManAddressType = "remote"
-
-type PostManAddress interface {
-	String() string
-	Transform(ctx context.Context, mail Mail[any]) *core.CoreError
-}
-
-type LocalPostManAddress struct {
-	postman Postman
-}
-
-func (a *LocalPostManAddress) String() string {
-	return fmt.Sprintf("%s:%s", PostManAddressType_LOCAL, a.postman.ID())
-}
-
-func (a *LocalPostManAddress) Transform(ctx context.Context, mail Mail[any]) *core.CoreError {
-	return a.postman.Receive(ctx, mail)
-}
-func NewLocalPostManAddress(postman Postman) PostManAddress {
-	return &LocalPostManAddress{postman: postman}
-}
-
-type RemotePostManAddress struct {
-	address RpcAddress
-}
-
-func (a *RemotePostManAddress) String() string {
-	return fmt.Sprintf("%s:%s", PostManAddressType_REMOTE, a.address.String())
-}
-
-func (a *RemotePostManAddress) Transform(ctx context.Context, mail Mail[any]) *core.CoreError {
-	channel := GetChannelByAddress(a.address.String())
-	codecInstance := codec.NewCodec[Mail[any]](mail.CodeC())
-	buff, err := codecInstance.Encode(mail)
-	if err != nil {
-		return core.NewCoreError(core.ERROR_CODE_CODEC_ENCODE_ERROR, fmt.Sprintf("error while encode mail: %v", err))
-	}
-	return channel.Send(ctx, buff)
-}
-
-func NewRemotePostManAddress(address RpcAddress) PostManAddress {
-	return &RemotePostManAddress{address: address}
-}
 
 type Postman interface {
 	Add(ctx context.Context, a Actor[Mail[any], any]) *core.CoreError
@@ -65,6 +17,7 @@ type Postman interface {
 	Dispatch(ctx context.Context, mail Mail[any]) *core.CoreError
 	Receive(ctx context.Context, mail Mail[any]) *core.CoreError
 	ID() uuid.UUID
+	Register(ctx context.Context, pa PostofficeAddress) core.CoreError
 }
 
 type postmanImpl struct {
@@ -116,6 +69,10 @@ func (m *postmanImpl) Deliver(ctx context.Context, mail Mail[any]) *core.CoreErr
 		return m.Dispatch(ctx, mail)
 	}
 	return nil
+
+}
+
+func (m *postmanImpl) Register(ctx context.Context, pa PostofficeAddress) core.CoreError {
 
 }
 

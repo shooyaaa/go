@@ -8,25 +8,25 @@ import (
 )
 
 type Postoffice interface {
-	Add(ctx context.Context, a PostManAddress) *core.CoreError
-	Remove(ctx context.Context, a PostManAddress) *core.CoreError
+	Add(ctx context.Context, a UniversalAddress) *core.CoreError
+	Remove(ctx context.Context, a UniversalAddress) *core.CoreError
 	Dispatch(ctx context.Context, mail Mail[any]) *core.CoreError
 }
 
 type postofficeImpl struct {
-	h library.ConsistentHash[PostManAddress]
+	h library.ConsistentHash[UniversalAddress]
 }
 
-func NewPostoffice(h library.ConsistentHash[PostManAddress]) Postoffice {
+func NewPostoffice(h library.ConsistentHash[UniversalAddress]) Postoffice {
 	return &postofficeImpl{h: h}
 }
 
-func (p *postofficeImpl) Add(ctx context.Context, a PostManAddress) *core.CoreError {
+func (p *postofficeImpl) Add(ctx context.Context, a UniversalAddress) *core.CoreError {
 	p.h.Add(a)
 	return nil
 }
 
-func (p *postofficeImpl) Remove(ctx context.Context, a PostManAddress) *core.CoreError {
+func (p *postofficeImpl) Remove(ctx context.Context, a UniversalAddress) *core.CoreError {
 	p.h.Remove(a)
 	return nil
 }
