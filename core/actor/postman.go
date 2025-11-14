@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/shooyaaa/core"
+	"github.com/shooyaaa/core/codec"
 	"github.com/shooyaaa/core/uuid"
 	"github.com/shooyaaa/log"
 )
@@ -17,7 +18,7 @@ type Postman interface {
 	Dispatch(ctx context.Context, mail Mail[any]) *core.CoreError
 	Receive(ctx context.Context, mail Mail[any]) *core.CoreError
 	ID() uuid.UUID
-	Register(ctx context.Context, pa PostofficeAddress) core.CoreError
+	Register(ctx context.Context, pa Address) *core.CoreError
 }
 
 type postmanImpl struct {
@@ -72,8 +73,12 @@ func (m *postmanImpl) Deliver(ctx context.Context, mail Mail[any]) *core.CoreErr
 
 }
 
-func (m *postmanImpl) Register(ctx context.Context, pa PostofficeAddress) core.CoreError {
-
+func (m *postmanImpl) Register(ctx context.Context, pa Address) *core.CoreError {
+	err := pa.Transfer(ctx, NewMail[any](m.id, pa.ID(), m, codec.JSON_CODEC))
+	if err != nil {
+		return core.NewCoreError(core.ERROR_CODE_ADDRESS_NOT_SUPPORTED, err.String())
+	}
+	return nil
 }
 
 func (m *postmanImpl) Dispatch(ctx context.Context, mail Mail[any]) *core.CoreError {

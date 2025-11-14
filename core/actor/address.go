@@ -6,6 +6,7 @@ import (
 
 	"github.com/shooyaaa/core"
 	"github.com/shooyaaa/core/codec"
+	"github.com/shooyaaa/core/uuid"
 )
 
 type AddressType string
@@ -15,22 +16,36 @@ const AddressType_REMOTE AddressType = "remote"
 
 type Address interface {
 	String() string
-	Transform(ctx context.Context, mail Mail[any]) *core.CoreError
+	ID() uuid.UUID
+	Transfer(ctx context.Context, mail Mail[any]) *core.CoreError
 }
 
-type LocalAddress struct {
+type LocalPostManAddress struct {
 	postman Postman
 }
 
-func (a *LocalAddress) String() string {
+func (a *LocalPostManAddress) String() string {
 	return fmt.Sprintf("%s:%s", AddressType_LOCAL, a.postman.ID())
 }
 
-func (a *LocalAddress) Transform(ctx context.Context, mail Mail[any]) *core.CoreError {
+func (a *LocalPostManAddress) ID() uuid.UUID {
+	return a.postman.ID()
+}
+
+func (a *LocalPostManAddress) Transfer(ctx context.Context, mail Mail[any]) *core.CoreError {
 	return a.postman.Receive(ctx, mail)
 }
-func NewLocalPostManAddress(postman Postman) Address {
-	return &LocalAddress{postman: postman}
+
+type LocalPostOfficeAddress struct {
+	postoffice Postoffice
+}
+
+func (a *LocalPostOfficeAddress) String() string {
+	return fmt.Sprintf("%s:%s", AddressType_LOCAL, a.postoffice.ID())
+}
+
+func (a *LocalPostOfficeAddress) ID() uuid.UUID {
+	return a.postoffice.ID()
 }
 
 type RemoteAddress struct {
@@ -41,7 +56,7 @@ func (a *RemoteAddress) String() string {
 	return fmt.Sprintf("%s:%s", AddressType_REMOTE, a.address.String())
 }
 
-func (a *RemoteAddress) Transform(ctx context.Context, mail Mail[any]) *core.CoreError {
+func (a *RemoteAddress) Transfer(ctx context.Context, mail Mail[any]) *core.CoreError {
 	channel := GetChannelByAddress(a.address.String())
 	codecInstance := codec.NewCodec[Mail[any]](mail.CodeC())
 	buff, err := codecInstance.Encode(mail)
